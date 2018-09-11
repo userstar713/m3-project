@@ -1,0 +1,3 @@
+[submodule "application/db_repo"]
+	path = application/db_repo
+	url = https://github.com/legoly/m3-database
