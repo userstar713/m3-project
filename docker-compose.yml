@@ -1,0 +1,75 @@
+version: '3.6'
+
+services:
+
+  #db:
+  #  image: postgres:9.6
+  #  restart: always
+  #  volumes:
+  # - /Users/svfat/docker_volumes/var/lib/postgresql/data:/var/lib/postgresql/data
+  #  environment:
+  #    POSTGRES_USER: docker
+  #    POSTGRES_PASSWORD: docker
+  #    POSTGRES_DB: docker
+  #  ports:
+  #    - 5432:5432
+
+  alembic:
+    build: ./application/db_repo
+    tty: true
+    volumes:
+      - ./application/db_repo:/db
+    environment:
+      - PGHOST=db
+      - PGDATABASE=m3
+      - PGUSER=postgres
+      - PGPASSWORD=password
+
+  db:
+    image: postgres:9.6
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_PASSWORD=password
+
+
+
+  redis:
+    image: redis
+    ports:
+      - 6379:6379
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DEBUG=1
+      - FLASK_APP=application/wsgi
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8080
+    volumes:
+      - ./application:/srv/application
+    ports:
+      - 8080:8080
+    command: flask run --host=0.0.0.0
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile-dev
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DEBUG=1
+      - FLASK_APP=application/web
+      - FLASK_ENV=development
+      - FLASK_RUN_PORT=8080
+    volumes:
+      - ./application:/srv/application
+    command: celery -A application.wsgi.celery worker --loglevel=info --concurrency=1
