@@ -18,4 +18,4 @@ COPY . .
 
 EXPOSE 3000
 ENTRYPOINT ["gunicorn"]
-CMD ["--bind", "0.0.0.0:3000", "--timeout", "10000", "-k", "gevent", "--workers", "2", "--preload", "wsgi:app"]
+CMD ["flask", "run", "--host=0.0.0.0"]
