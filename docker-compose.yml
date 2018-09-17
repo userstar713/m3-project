@@ -55,8 +55,8 @@ services:
     volumes:
       - ./application:/srv/application
     ports:
-      - 8080:8080
-    command: flask run --host=0.0.0.0
+      - 8000:8000
+    command: gunicorn --bind 0.0.0.0 -k gevent --workers 2 --preload application.wsgi:app
 
   worker:
     build:

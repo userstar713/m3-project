@@ -5,7 +5,7 @@ from .helpers import seller_integration_bp
 from ..tasks import start_synchronization
 
 @seller_integration_bp.route(
-    '/'
+    '/status'
 )
 def index():
     return jsonify(
