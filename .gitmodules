@@ -1,3 +1,4 @@
 [submodule "application/db_repo"]
 	path = application/db_repo
-	url = git@github.com:legoly/m3-database.git
+    url = git@github.com:legoly/m3-database.git
+    branch = master
