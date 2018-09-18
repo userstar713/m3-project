@@ -104,3 +104,8 @@ node {
     }
 }
 
+build job: 'deploy-service',
+      parameters: [
+        string(name: 'SERVICE_NAME', value: "${serviceName}"),
+        string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
+      wait: false
