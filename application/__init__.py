@@ -20,6 +20,7 @@ def entrypoint(mode: str = 'app') -> Flask:
     app.debug = app.config['DEBUG']
     if app.debug:
         logger.info('Application running in DEBUG mode')
+        logger.info(f"SQLALCHEMY_DATABASE_URI={app.config['SQLALCHEMY_DATABASE_URI']}")
     db.init_app(app)
     with app.app_context():
         configure_default_category_id()
