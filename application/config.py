@@ -21,7 +21,7 @@ CACHE_REDIS_PORT = int(getenv('REDIS_PORT', 6379))
 
 BASE_PATH = Path(__file__).parent
 
-SQLALCHEMY_DATABASE_URI = getenv('DATABASE_URI',
+SQLALCHEMY_DATABASE_URI = getenv('SQLALCHEMY_DATABASE_URI',
                                  'postgresql://'
                                  'postgres:password@db:5432/m3')
 
