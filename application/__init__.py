@@ -1,9 +1,11 @@
 # project/__init__.py
-from flask import Flask
+import traceback
+from flask import Flask, jsonify
 from .views import init_app as init_views
 from .tasks import celery, init_celery
 from application.caching import cache
 from application.db_extension.models import db
+
 from application.db_extension.routines import configure_default_category_id
 from .logging import logger
 
@@ -28,6 +30,17 @@ def entrypoint(mode: str = 'app') -> Flask:
     init_celery(app)
     cache.init_app(app)
 
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return jsonify(error=404, text=str(e)), 404
+
+    @app.errorhandler(Exception)
+    def all_exceptions(e):
+        # FIXME maybe unsecure on production !!!
+        t = traceback.format_exc()
+        app.logger.critical(t)
+        return jsonify(error=500, data={'exception': e.__class__.__name__,
+                                        'traceback': t}), 500
 
     if mode == 'app':
         return app
