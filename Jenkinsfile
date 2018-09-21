@@ -109,15 +109,3 @@ build job: 'deploy-service',
         string(name: 'SERVICE_NAME', value: "${serviceName}"),
         string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
       wait: false
-
-build job: 'deploy-service',
-      parameters: [
-        string(name: 'SERVICE_NAME', value: "${serviceName}-beat"),
-        string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
-      wait: false
-
-build job: 'deploy-service',
-      parameters: [
-        string(name: 'SERVICE_NAME', value: "${serviceName}-worker"),
-        string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
-      wait: false
