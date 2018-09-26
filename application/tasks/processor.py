@@ -13,16 +13,18 @@ from application.db_extension.models import (db,
 from application.db_extension.models import db
 from typing import NamedTuple
 from application.db_extension.routines import (
-                                               get_default_category_id,
-                                               domain_attribute_lookup)
+    get_default_category_id,
+    domain_attribute_lookup)
 from application.utils import listify
 from application.logging import logger
 from sqlalchemy.sql.expression import func
 
 from .helpers import DATATYPES, remove_diacritics
 
+
 def filter_brands(attributes: list) -> list:
     return [a for a in attributes if a['code'] == 'brand']
+
 
 @cache.memoize()
 def get_nlp_ngrams():
@@ -36,12 +38,13 @@ def get_nlp_ngrams():
     return [dict(row) for row in rows]
 
 
-@cache.memoize(timeout=60*60)
+@cache.memoize(timeout=60 * 60)
 def get_process_product_attributes():
     rows = db.session.query(
         DomainAttribute.code
     )
     return [row[0] for row in rows]
+
 
 def get_domain_taxonomy_node_id_from_dict(attribute_code, attribute_value):
     """
@@ -101,6 +104,7 @@ def prepare_reviews(reviews: list) -> list:
 
 drc = DomainReviewers()
 
+
 class Product(NamedTuple):
     name: str
     source_id: int
@@ -125,7 +129,7 @@ class Product(NamedTuple):
 
 
 class BulkAdder:
-    def __init__(self, model: db.Model, threshold: int=10000) -> None:
+    def __init__(self, model: db.Model, threshold: int = 10000) -> None:
         assert hasattr(model, 'bulk_insert_do_nothing')
         self._model = model
         self._threshold = threshold
@@ -144,7 +148,6 @@ class BulkAdder:
 
 
 class ProductProcessor:
-    @log_durations(print, unit='auto')
     def __init__(self):
         self.domain_attributes = {row.code: row.__dict__ for row in
                                   db.session.query(DomainAttribute)}
@@ -162,7 +165,6 @@ class ProductProcessor:
         self.sav_bulk_adder.flush()
         self.review_bulk_adder.flush()
 
-    @log_durations(print, unit='auto')
     def replace_with_nlp_ngrams(self, cleaned_string):
         for nlps in self.nlp_synonyms:
             # pattern = r'\b{}\b'
@@ -174,7 +176,6 @@ class ProductProcessor:
                                     nlps['target_text'], cleaned_string)
         return cleaned_string
 
-    @log_durations(print, unit='auto')
     def generate_review(self, data):
         domain_reviewer_id = drc.get_id_by_name_or_alias(
             name_or_alias=data.get('reviewer_name', 'Unknown')
@@ -201,7 +202,6 @@ class ProductProcessor:
             'source_id': self.product.source_id,
         }
 
-    @log_durations(print, unit='auto')
     def generate_sav_list(self,
                           value,
                           da_id,
@@ -240,12 +240,11 @@ class ProductProcessor:
             })
         return result
 
-    @log_durations(print, unit='auto')
     def create_master_and_source(self):
         master_product, _ = MasterProductProxy.get_or_create(
             name=self.product.name,
             source_id=self.product.source_id,
-            source_identifier='TEST', # TODO  is it required?
+            source_identifier='TEST',  # TODO  is it required?
             category_id=self.category_id
         )
         db.session.commit()
@@ -258,7 +257,6 @@ class ProductProcessor:
         db.session.commit()
         self.source_product_id = source_product.id
 
-    @log_durations(print, unit='auto')
     def prepare_process_product(self, name: str) -> dict:
         """
         Cleanup product name, look for brand and non attribute words
@@ -289,24 +287,26 @@ class ProductProcessor:
             'extra_words': lookup_data['extra_words']
         }
 
-    @log_durations(print, unit='auto')
     def process_master_product(self, brand_id: int) -> dict:
         prepared = self.prepare_process_product(self.product.name)
         upd_data = {
             'processed_name': prepared['processed'],
-            'brand_node_id': brand_id if brand_id else prepared['brand_node_id']
+            'brand_node_id': brand_id if brand_id else prepared[
+                'brand_node_id']
         }
         if prepared['extra_words']:
             non_attribute_words = ' '.join(prepared['extra_words'])
             upd_data['non_attribute_words'] = non_attribute_words
-            upd_data['non_attribute_words_vector'] = func.to_tsvector('english', non_attribute_words)
+            upd_data['non_attribute_words_vector'] = func.to_tsvector(
+                'english', non_attribute_words)
             upd_data['updated'] = datetime.now()
         # logger.info("updating master_product")
-        q = db.session.query(MasterProductProxy).filter_by(id=self.master_product_id)
+        q = db.session.query(MasterProductProxy).filter_by(
+            id=self.master_product_id)
         q.count()
         q.update(upd_data, synchronize_session='fetch')
         db.session.commit()
-        #logger.info("process product finsihed")
+        # logger.info("process product finsihed")
         return {
             'name': self.product.name,
             'processed': prepared['processed'],
@@ -314,7 +314,6 @@ class ProductProcessor:
             'extra_words': prepared['extra_words']
         }
 
-    @log_durations(print, unit='auto')
     def process(self, product: Product):
         self.product = product
         self.create_master_and_source()
@@ -343,13 +342,13 @@ class ProductProcessor:
             # `sav` is a `source attribute value`
             assert self.source_product_id
             sav_list = self.generate_sav_list(value=value,
-                                                  da_id=da[
-                                                     'id'],
-                                                 da_code=da_code,
-                                                 datatype=datatype,
-                                                 value_key=
-                                                 DATATYPES[
-                                                     datatype])
+                                              da_id=da[
+                                                  'id'],
+                                              da_code=da_code,
+                                              datatype=datatype,
+                                              value_key=
+                                              DATATYPES[
+                                                  datatype])
 
             for sav in sav_list:
                 self.sav_bulk_adder.add(sav)

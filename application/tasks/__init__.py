@@ -5,9 +5,9 @@ def init_celery(app):
     # set broker url and result backend from app config
     celery.conf.broker_url = app.config['CELERY_BROKER_URL']
     celery.conf.result_backend = app.config['CELERY_RESULT_BACKEND']
-    if app.debug:
-        celery.conf.task_always_eager = True
-        celery.conf.task_eager_propagates = True
+    #if app.debug:
+    #    celery.conf.task_always_eager = True
+    #    celery.conf.task_eager_propagates = True
     # subclass task base for app context
     # http://flask.pocoo.org/docs/0.12/patterns/celery/
     TaskBase = celery.Task

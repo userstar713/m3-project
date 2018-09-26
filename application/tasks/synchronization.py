@@ -46,13 +46,11 @@ def get_products_for_source_id(source_id: int) -> List[Product]:
 @celery.task(bind=True, name='tasks.process_product_list')
 def process_product_list_task(self,
                               chunk: List[Product]):
-
+    logger.debug(f"Processing {len(chunk)} products")
     processor = ProductProcessor()
     for product in chunk:
         processor.process(product)
-
     processor.flush()
-
 
 @celery.task(bind=True)
 def execute_pipeline_task(self, source_id):

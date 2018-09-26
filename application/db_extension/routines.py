@@ -7,6 +7,7 @@ from funcy import log_durations
 
 
 def validate_pipeline_run(sequence_id: int, source_id: int):
+    return True # FIXME always return true
     q = """SELECT check_type, status 
            FROM public.validate_pipeline_run(:category_id, 
                                              :source_id, 
@@ -101,7 +102,7 @@ def domain_attribute_lookup(sentence):
     return {'attributes':result, 'extra_words':[]}
 
 #@cache.memoize(timeout=60*60*24*7)
-@log_durations(print, unit='auto')
+
 def _domain_attribute_lookup(sentence):
     print('sentence')
     index = 0
