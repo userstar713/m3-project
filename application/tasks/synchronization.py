@@ -43,36 +43,16 @@ def get_products_for_source_id(source_id: int) -> List[Product]:
             products]
 
 
-class BulkAdder:
-    def __init__(self, model, threshold=10000):
-        self._model = model
-        self._threshold = threshold
-        self._data = []
-
-    def add(self, data):
-        self._data.append(data)
-        if len(self._data) == self._threshold:
-            self.flush()
-
-    def flush(self):
-        self._model.bulk_insert_do_nothing(
-            self._data
-        )
-        self._data = []
-
-
 @celery.task(bind=True, name='tasks.process_product_list')
 def process_product_list_task(self,
                               chunk: List[Product]):
-    sav_bulk_adder = BulkAdder(SourceAttributeValue)
-    review_bulk_adder = BulkAdder(SourceReview)
-    processor = ProductProcessor(sav_bulk_adder=sav_bulk_adder,
-                                 review_bulk_adder=review_bulk_adder)
+
+    processor = ProductProcessor()
     for product in chunk:
         processor.process(product)
 
-    sav_bulk_adder.flush()
-    review_bulk_adder.flush()
+    processor.flush()
+
 
 @celery.task(bind=True)
 def execute_pipeline_task(self, source_id):
@@ -89,16 +69,17 @@ logger.info('start_synchronization')
 def start_synchronization(source_id: int) -> str:
     logger.info('start_synchronization')
     print('start synchronization')
-    converted_products = get_products_for_source_id(source_id)
-    chunks = list(chunkify(converted_products, 100))
+    converted_products = get_products_for_source_id(source_id)[:1000]
+    #converted_products = [[pr for pr in converted_products if pr.reviews]]
+    chunks = list(chunkify(converted_products, 500))
     logger.info(f'{len(chunks)} chunks of products')
     logger.info('Creating job group')
-    #job = group(
-    #    process_product_list_task.s(chunk) for chunk in chunks
-    #) | execute_pipeline_task.si(source_id)
     job = group(
         process_product_list_task.s(chunk) for chunk in chunks
-    )
+    ) | execute_pipeline_task.si(source_id)
+    #job = group(
+    #    process_product_list_task.s(chunk) for chunk in chunks
+    #)
     logger.info('Calling job.delay()')
     task = job.delay()
     return task.id

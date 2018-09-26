@@ -29,10 +29,7 @@ def filter_tsquery(s):
 
 
 def attribute_lookup(sentence,
-                     predicate_str=None,
-                     brand_treatment='exclude',
-                     should_extract_values=False,
-                     should_restrict_nodes=False):
+                     brand_treatment='exclude'):
     """
     function attribute_lookup2(p_category_id bigint,
                                p_search_str text,
@@ -81,10 +78,7 @@ def attribute_lookup(sentence,
     q = """SELECT * 
            FROM public.attribute_lookup2 (:category_id, 
                                           :sentence, 
-                                          :predicate_str,
-                                          :brand_treatment, 
-                                          :should_extract_values,
-                                          :should_restrict_nodes);
+                                          :brand_treatment);
         """
 
     # Note 'exclude' because we don't extract brands and False because we don't
@@ -92,10 +86,7 @@ def attribute_lookup(sentence,
     rows = db.session.execute(q, {
         'category_id': get_default_category_id(),
         'sentence': filter_tsquery(sentence),
-        'predicate_str': predicate_str,
-        'brand_treatment': brand_treatment,
-        'should_extract_values': should_extract_values,
-        'should_restrict_nodes': should_restrict_nodes
+        'brand_treatment': brand_treatment
     })
     attributes = []
     for row in rows:
@@ -106,10 +97,10 @@ def attribute_lookup(sentence,
 
 
 def domain_attribute_lookup(sentence):
-    # FIXME dummy function until we'll fix legacy routines
-    return {'attributes':[], 'extra_words':[]}
+    result = attribute_lookup(sentence)
+    return {'attributes':result, 'extra_words':[]}
 
-@cache.memoize(timeout=60*60*24*7)
+#@cache.memoize(timeout=60*60*24*7)
 @log_durations(print, unit='auto')
 def _domain_attribute_lookup(sentence):
     print('sentence')
@@ -257,6 +248,6 @@ def pipe_aggregate(sequence_id: int, source_id: int) -> List:
                                     'category_id': get_default_category_id(),
                                     'source_id': source_id,
                                     'calculate_aggregates': False
-                                })
+                                }).first()
     db.session.commit()
     return result

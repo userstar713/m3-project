@@ -10,6 +10,7 @@ from application.db_extension.models import (db,
                                              SourceAttributeValue,
                                              DomainReviewer,
                                              SourceReview)
+from application.db_extension.models import db
 from typing import NamedTuple
 from application.db_extension.routines import (
                                                get_default_category_id,
@@ -123,9 +124,28 @@ class Product(NamedTuple):
         return self._asdict()
 
 
+class BulkAdder:
+    def __init__(self, model: db.Model, threshold: int=10000) -> None:
+        assert hasattr(model, 'bulk_insert_do_nothing')
+        self._model = model
+        self._threshold = threshold
+        self._data = []
+
+    def add(self, data: dict) -> None:
+        self._data.append(data)
+        if len(self._data) == self._threshold:
+            self.flush()
+
+    def flush(self) -> None:
+        self._model.bulk_insert_do_nothing(
+            self._data
+        )
+        self._data = []
+
+
 class ProductProcessor:
     @log_durations(print, unit='auto')
-    def __init__(self, sav_bulk_adder, review_bulk_adder):
+    def __init__(self):
         self.domain_attributes = {row.code: row.__dict__ for row in
                                   db.session.query(DomainAttribute)}
         self.category_id = get_default_category_id()
@@ -134,9 +154,13 @@ class ProductProcessor:
         self.master_product_id = None
         self.source_product_id = None
         self.product = None
-        self.sav_bulk_adder = sav_bulk_adder
-        self.review_bulk_adder = review_bulk_adder
+        self.sav_bulk_adder = BulkAdder(SourceAttributeValue)
+        self.review_bulk_adder = BulkAdder(SourceReview)
         # self.nlp_synonyms = get_nlp_ngrams() TODO deprecated??
+
+    def flush(self):
+        self.sav_bulk_adder.flush()
+        self.review_bulk_adder.flush()
 
     @log_durations(print, unit='auto')
     def replace_with_nlp_ngrams(self, cleaned_string):
@@ -221,7 +245,7 @@ class ProductProcessor:
         master_product, _ = MasterProductProxy.get_or_create(
             name=self.product.name,
             source_id=self.product.source_id,
-            source_identifier='TEST',
+            source_identifier='TEST', # TODO  is it required?
             category_id=self.category_id
         )
         db.session.commit()
@@ -251,6 +275,7 @@ class ProductProcessor:
         # attr_codes = []
         # attr_codes = ['vintage','brand','region','quality_level','varietals','wine_type','styles','bottle_size','is_blend','sweetness']
         # attr_codes = get_process_product_attributes()
+
         lookup_data = domain_attribute_lookup(sentence=unaccented_name)
         brands = filter_brands(lookup_data['attributes'])
         if len(brands) > 1:  # what to do if more than one brand returned?

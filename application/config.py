@@ -33,3 +33,4 @@ CELERY_BROKER_URL = getenv('CELERY_BROKER_URL',
 
 CELERY_RESULT_BACKEND = getenv('CELERY_RESULT_BACKEND',
                                'redis://redis:6379/1')
+

@@ -80,7 +80,7 @@ def execute_pipeline(source_id: int,
 
         result = pipe_aggregate(source_id, sequence_id)
 
-        status_msg = result[0][0] if result else 'Empty'
+        status_msg = result[0] if result else 'Empty'
         logger.info(f'execute_pipeline: pipe_aggregate: '
                     f'Status Msg: {status_msg}')
         if not status_msg.startswith("pipe_aggregate"):
