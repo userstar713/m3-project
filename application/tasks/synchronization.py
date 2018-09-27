@@ -61,13 +61,10 @@ def execute_pipeline_task(self, source_id):
     execute_pipeline(source_id, sequence_id)
 
 
-logger.info('start_synchronization')
-
-
 def start_synchronization(source_id: int) -> str:
     logger.info('start_synchronization')
     print('start synchronization')
-    converted_products = get_products_for_source_id(source_id)[:1000]
+    converted_products = get_products_for_source_id(source_id)[:100]
     #converted_products = [[pr for pr in converted_products if pr.reviews]]
     chunks = list(chunkify(converted_products, 500))
     logger.info(f'{len(chunks)} chunks of products')
