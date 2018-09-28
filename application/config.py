@@ -18,7 +18,7 @@ REDIS_HOST = getenv('REDIS_HOST', 'redis://redis:6579')
 REDIS_DB = int(getenv('REDIS_DB', 1))
 
 
-REDIS_URI = f'redis://{REDIS_HOST}/{REDIS_DB}'
+REDIS_URI = f'{REDIS_HOST}/{REDIS_DB}'
 
 CACHE_REDIS_HOST, CACHE_REDIS_PORT = REDIS_HOST.replace('redis://','').split(':')
 CACHE_REDIS_DB = REDIS_DB
