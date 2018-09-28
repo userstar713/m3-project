@@ -90,7 +90,6 @@ def execute_pipeline(source_id: int,
         db.session.rollback()
         set_completion_status(sequence,
                               source_id,
-                              sequence_id,
                               e)
         db.session.commit()
         # print(traceback.format_exception(None, e, e.__traceback__))
@@ -99,7 +98,7 @@ def execute_pipeline(source_id: int,
         logger.exception('execute_pipeline: got exception')
         raise e
 
-    set_completion_status(sequence, db.session, source_id, sequence_id)
+    set_completion_status(sequence, source_id)
     db.session.commit()
 
     print(sequence.__dict__)
@@ -117,12 +116,12 @@ def execute_pipeline(source_id: int,
 # otherwise, it will set state to ERROR and send email to Admin
 # 3) Set sequence end time to current time
 #
-def set_completion_status(sequence, source_id, sequence_id,
+def set_completion_status(sequence, source_id,
                           exception=None):
     # Validate the pipeline input and output
     logger.info("execute_pipeline: validate pipeline execution")
     if exception is None:
-        status = validate_pipeline_run(sequence_id, source_id)
+        status = validate_pipeline_run(sequence.id, source_id)
     else:
         status = False
 
