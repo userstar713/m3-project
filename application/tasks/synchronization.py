@@ -25,12 +25,14 @@ def sample_task(self):
     time.sleep(5)
     return datetime.datetime.now().isoformat()
 
-def get_test_products():
+def get_test_products() -> List:
     import csv
     root = current_app.config['BASE_PATH']
     with open(root / 'tools/products.csv', 'r') as f:
         rdr = csv.DictReader(f)
-        return [r for r in rdr]
+        result = [r for r in rdr]
+    logger.debug(f"Got {len(result)} test products")
+    return result
 
 def get_products_for_source_id(source_id: int) -> List[Product]:
     if source_id == 12345:
@@ -49,6 +51,7 @@ def process_product_list_task(self,
     logger.debug(f"Processing {len(chunk)} products")
     processor = ProductProcessor()
     for product in chunk:
+        assert isinstance(product, Product)
         processor.process(product)
     processor.flush()
 
