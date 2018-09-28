@@ -70,6 +70,7 @@ def start_synchronization(source_id: int) -> str:
     #converted_products = [[pr for pr in converted_products if pr.reviews]]
     chunks = list(chunkify(converted_products, 500))
     logger.info(f'{len(chunks)} chunks of products prepared for processing')
+    print(str(chunks[0])[:500])
     job = group(
         process_product_list_task.s(chunk) for chunk in chunks
     ) | execute_pipeline_task.si(source_id)
