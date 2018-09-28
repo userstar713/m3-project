@@ -14,15 +14,14 @@ CACHE_TYPE = getenv('CACHE_TYPE',
 #
 # Redis settings (Flask-Caching)
 #
-REDIS_HOST = getenv('REDIS_HOST', 'redis')
+REDIS_HOST = getenv('REDIS_HOST', 'redis://redis:6579')
 REDIS_DB = int(getenv('REDIS_DB', 1))
-REDIS_PORT = int(getenv('REDIS_PORT', 6379))
 
-REDIS_URI = f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'
 
-CACHE_REDIS_HOST = REDIS_HOST
+REDIS_URI = f'redis://{REDIS_HOST}/{REDIS_DB}'
+
+CACHE_REDIS_HOST, CACHE_REDIS_PORT = REDIS_HOST.replace('redis://','').split(':')
 CACHE_REDIS_DB = REDIS_DB
-CACHE_REDIS_PORT = REDIS_PORT
 
 BASE_PATH = Path(__file__).parent
 
