@@ -6,29 +6,23 @@ from application.tasks.synchronization import celery
 from application.spiders import klwines
 from application.db_extension.models import db, Source
 from application.caching import cache
-from scrapy.crawler import Crawler
-from billiard import Process
+from twisted.internet import reactor
+import scrapy
+from scrapy.crawler import CrawlerRunner
 
-class UrlCrawlerScript(Process):
-    def __init__(self, spider):
-        Process.__init__(self)
-        self.spider = spider
-        self.crawler = Crawler()
-        self.crawler.configure()
-        # self.crawler.signals.connect(reactor.stop, signal=signals.spider_closed)
-
-
-    def run(self):
-        self.crawler.crawl(self.spider)
-        self.crawler.start()
-        # reactor.run()
-
-
-def run_spider(spider_cls):
-    spider = spider_cls()
-    crawler = UrlCrawlerScript(spider)
-    crawler.start()
-    crawler.join()
+def run_spinder(spider_cls, tmp_file):
+    runner = CrawlerRunner({
+        'CONCURRENT_REQUESTS': klwines.CONCURRENT_REQUESTS,
+        'COOKIES_DEBUG': klwines.COOKIES_DEBUG,
+        'FEED_FORMAT': 'jsonlines',
+        'FEED_URI': f'file://{tmp_file.name}',
+        'DOWNLOADER_CLIENT_METHOD': 'TLSv1.2',
+        'DOWNLOADER_CLIENTCONTEXTFACTORY': klwines.DOWNLOADER_CLIENTCONTEXTFACTORY,
+        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'
+    })
+    d = runner.crawl(spider_cls)
+    d.addBoth(lambda _: reactor.stop())
+    reactor.run()
 
 def execute_spider(source_id: int) -> str:
     task = task_execute_spider.delay(source_id)
@@ -39,9 +33,11 @@ def task_execute_spider(self, source_id: int) -> None:
     source = db.session.query(Source).get(source_id)
     if source.name == 'K&L Wines':
         spider_cls = klwines.KLWinesSpider
+        spider_func = klwines.get_data
     else:
         raise ValueError(f'No spider with name {source.name}')
     with NamedTemporaryFile() as f:
-        run_spider(spider_cls)
+        #spider_func(f)
+        run_spinder(spider_cls, f)
         data = [json.loads(line) for line in f]
         cache.set(f'spider::{source_id}::data', pickle.dumps(data, protocol=-1))
