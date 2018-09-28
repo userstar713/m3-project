@@ -20,7 +20,7 @@ def index():
     '/source/<int:source_id>/sync/',
 )
 def sync(source_id: int) -> Response:
-    content = request.get_json()
+    # content = request.get_json()
     # callback_url = content['callback_url']
     status = start_synchronization(source_id)
     return jsonify(
