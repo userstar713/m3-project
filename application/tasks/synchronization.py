@@ -51,7 +51,11 @@ def process_product_list_task(self,
     logger.debug(f"Processing {len(chunk)} products")
     processor = ProductProcessor()
     for product in chunk:
-        assert isinstance(product, Product)
+        try:
+            assert isinstance(product, Product)
+        except AssertionError as e:
+            logger.error(f"Error in data: {str(product)[:100]}")
+            raise e
         processor.process(product)
     processor.flush()
 
