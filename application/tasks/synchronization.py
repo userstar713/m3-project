@@ -34,29 +34,25 @@ def get_test_products() -> List:
     logger.debug(f"Got {len(result)} test products")
     return result
 
-def get_products_for_source_id(source_id: int) -> List[Product]:
+def get_products_for_source_id(source_id: int) -> List[dict]:
     if source_id == 12345:
         products = get_test_products()
     else:
         raise NotImplementedError(
             'You only able to use test source_id 12345 yet'
         )
-    return [Product.from_raw(source_id, product) for product in
+    return [Product.from_raw(source_id, product).as_dict() for product in
             products]
 
 
 @celery.task(bind=True, name='tasks.process_product_list')
 def process_product_list_task(self,
-                              chunk: List[Product]):
+                              chunk: List[dict]):
     logger.debug(f"Processing {len(chunk)} products")
     processor = ProductProcessor()
     for product in chunk:
-        try:
-            assert isinstance(product, Product)
-        except AssertionError as e:
-            logger.error(f"Error in data: {str(product)[:100]}")
-            raise e
-        processor.process(product)
+        p = Product(**product)
+        processor.process(p)
     processor.flush()
 
 @celery.task(bind=True)
