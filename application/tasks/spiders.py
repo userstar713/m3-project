@@ -10,7 +10,7 @@ from twisted.internet import reactor
 import scrapy
 from scrapy.crawler import CrawlerRunner
 
-def run_spinder(spider_cls, tmp_file):
+def run_spider(spider_cls, tmp_file):
     runner = CrawlerRunner({
         'CONCURRENT_REQUESTS': klwines.CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': klwines.COOKIES_DEBUG,
@@ -33,11 +33,11 @@ def task_execute_spider(self, source_id: int) -> None:
     source = db.session.query(Source).get(source_id)
     if source.name == 'K&L Wines':
         spider_cls = klwines.KLWinesSpider
-        spider_func = klwines.get_data
+        #spider_func = klwines.get_data
     else:
         raise ValueError(f'No spider with name {source.name}')
     with NamedTemporaryFile() as f:
         #spider_func(f)
-        run_spinder(spider_cls, f)
+        run_spider(spider_cls, f)
         data = [json.loads(line) for line in f]
         cache.set(f'spider::{source_id}::data', pickle.dumps(data, protocol=-1))

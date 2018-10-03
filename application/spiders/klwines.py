@@ -285,6 +285,7 @@ class WineItem(Item):
     # flaw = Field()
     reviews = Field()
 
+DEBUG_LIMIT = True
 
 class KLWinesSpider(BaseSpider):
     """'Spider' which is getting data from klwines.com"""
@@ -350,6 +351,10 @@ class KLWinesSpider(BaseSpider):
             return None
         step = 500
         max_items = 15000
+
+        if DEBUG_LIMIT:
+            max_items = 500 # override max_items setting for debug purposes
+
         url = f'{BASE_URL}/Products/r?'
         for page in range(0, max_items, step):
             from time import sleep
