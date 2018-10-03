@@ -22,19 +22,31 @@ from typing import Iterable
 
 
 class GetIdOrCreateMixin:
+    #@classmethod
+    #def get_or_create(cls, defaults=None, **kwargs) -> (ClauseElement, bool):
+    #    instance = db.session.query(cls).filter_by(**kwargs).first()
+    #    if instance:
+    #        return instance, False
+    #    else:
+    #        params = dict((k, v) for k, v in kwargs.items() if
+    #                      not isinstance(v, ClauseElement))
+    #        params.update(defaults or {})
+    #        instance = cls(**params)
+    #        db.session.add(instance)
+    #        return instance, True
     @classmethod
-    def get_or_create(cls, defaults=None, **kwargs) -> (ClauseElement, bool):
-        instance = db.session.query(cls).filter_by(**kwargs).first()
-        if instance:
-            return instance, False
-        else:
-            params = dict((k, v) for k, v in kwargs.items() if
-                          not isinstance(v, ClauseElement))
-            params.update(defaults or {})
-            instance = cls(**params)
-            db.session.add(instance)
-            return instance, True
+    def get_by(cls, **kwargs):
+        return cls.query.filter_by(**kwargs).first()
 
+    @classmethod
+    def get_or_create(cls, **kwargs):
+        r = cls.get_by(**kwargs)
+        if not r:
+            r = cls(**kwargs)
+            db.session.add(r)
+            return r, True
+        else:
+            return r, False
 
 class BulkInsertDoNothingMixin:
     @classmethod
