@@ -11,6 +11,9 @@ from application.db_repo.models.pipeline_attribute_value import PipelineAttribut
 from application.db_repo.models.pipeline_review_content import PipelineReviewContent
 from application.db_repo.models import source_review
 from application.db_repo.models.domain_category import DomainCategory
+from application.db_repo.models.source_location import SourceLocation
+
+from application.db_repo.models import source_location_product
 
 from sqlalchemy.sql import ClauseElement
 from sqlalchemy.dialects import postgresql
@@ -43,6 +46,9 @@ class BulkInsertDoNothingMixin:
                 ).on_conflict_do_nothing()
             )
         db.session.commit()
+
+class SourceLocationProductProxy(source_location_product.SourceLocationProduct, GetIdOrCreateMixin):
+    pass
 
 class MasterProductProxy(master_product.MasterProduct, GetIdOrCreateMixin):
     pass

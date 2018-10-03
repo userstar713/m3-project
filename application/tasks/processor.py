@@ -9,13 +9,14 @@ from application.db_extension.models import (db,
                                              SourceProductProxy,
                                              SourceAttributeValue,
                                              DomainReviewer,
-                                             SourceReview)
+                                             SourceReview,
+                                             SourceLocationProductProxy)
 from application.db_extension.models import db
 from typing import NamedTuple
 from application.db_extension.routines import (
     get_default_category_id,
     domain_attribute_lookup)
-from application.utils import listify
+from application.utils import listify, get_float_number
 from application.logging import logger
 from sqlalchemy.sql.expression import func
 
@@ -365,6 +366,24 @@ class ProductProcessor:
     def process(self, product: Product):
         self.product = product
         self.create_master_and_source()
+
+        default_location_id = 1 # TODO fix that
+
+        price = get_float_number(product.price)
+        if not price or price < 1:
+            logger.error(
+                'webhook - ERROR - Invalid price, p={}'.format(product))
+            return
+
+        qoh = int(product.qoh)
+        price_int = round(price * 100)
+
+        SourceLocationProductProxy.get_or_create(
+            source_product_id=self.source_product_id,
+            source_location_id=default_location_id,
+            price=price,
+            qoh=qoh,
+            price_int=price_int)
 
         for j, (da_code, value) in enumerate(self.product.as_dict().items()):
             if not value or da_code in ['price', 'qoh']:

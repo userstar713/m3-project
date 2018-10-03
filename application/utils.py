@@ -17,6 +17,14 @@ def listify(arg: Any) -> List:
         arg = [arg, ]
     return arg
 
+def get_float_number(number):
+    if not number:
+        return None
+    try:
+        return float(number or 0)
+    except ValueError:
+        return None
+
 def remove_duplicates(l: List) -> List:
     """
        Remove duplicate objects from list
