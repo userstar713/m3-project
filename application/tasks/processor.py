@@ -116,7 +116,7 @@ class Product(NamedTuple):
             _product = {
                 'source_id': source_id,
                 'name': product['name'],
-                'reviews': product['_reviews']
+                'reviews': product['reviews']
             }
         except AttributeError as e:
             logger.critical(f'Error while converting raw product {product}')
