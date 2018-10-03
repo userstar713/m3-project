@@ -349,8 +349,8 @@ class PipelineExtractor:
             else:
                 raise TypeError
         logger.warning(f"generate_extract_result:"
-                       f" no domain attribute "
-                       f"with code {' '.join(err_no_code)}")
+                       f" no domain attributes "
+                       f"with codes: {', '.join(err_no_code)}")
         return result
 
     def extract_information(self, sentence, product_id, extract_name=False, track_to=None):
