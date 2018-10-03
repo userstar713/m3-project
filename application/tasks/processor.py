@@ -81,7 +81,7 @@ class DomainReviewers:
 
 def process_varietals(product_name, attribute_code, value):
     # logger.debug('process_varietals: {} {}'.format(product_name, attribute_code))
-    name_varietals = domain_attribute_lookup(sentence=product_name)
+    name_varietals = domain_attribute_lookup(sentence=product_name).get('attributes', [])
     new_value = value
     if len(name_varietals) > 0:
         new_value = ', '.join(varietal['value'] for varietal in name_varietals)
@@ -109,14 +109,63 @@ class Product(NamedTuple):
     name: str
     source_id: int
     reviews: list
-
+    price: str
+    vintage: str
+    msrp: str
+    brand: str
+    region: str
+    varietals: str
+    foods: str
+    wine_type: str
+    body: str
+    tannin: str
+    image: str
+    characteristics: str
+    description: str
+    purpose: str
+    sku: str
+    bottle_size: str
+    qoh: str
+    highlights: str
+    single_product_url: str
+    alcohol_pct: str
+    drink_from: str
+    drink_to: str
+    acidity: str
+    discount_pct: str
+    flaw: str
     @staticmethod
     def from_raw(source_id: int, product: dict) -> 'Product':
         try:
             _product = {
                 'source_id': source_id,
                 'name': product['name'],
-                'reviews': product['_reviews']
+                'reviews': product.get('reviews'),
+                'price': product.get('price'), 
+                'vintage': product.get('vintage'), 
+                'msrp': product.get('msrp'), 
+                'brand': product.get('brand'),
+                'region': product.get('region'), 
+                'varietals': product.get('varietals'),
+                'foods': product.get('foods'), 
+                'wine_type': product.get('wine_type'), 
+                'body': product.get('body'), 
+                'tannin': product.get('tannin'), 
+                'image': product.get('image'), 
+                'characteristics': product.get('characteristics'),
+                'description': product.get('description'),
+                'purpose': product.get('purpose'),
+                'sku': product.get('sku'), 
+                'bottle_size': product.get('bottle_size'), 
+                'qoh': product.get('qoh'), 
+                'highlights': product.get('highlights'), 
+                'single_product_url': product.get('single_product_url'),
+                'alcohol_pct': product.get('alcohol_pct'),
+                'drink_from': product.get('drink_from'), 
+                'drink_to': product.get('drink_to'),
+                'acidity': product.get('acidity'), 
+                'discount_pct': product.get('discount_pct'), 
+                'flaw': product.get('flaw'),
             }
         except AttributeError as e:
             logger.critical(f'Error while converting raw product {product}')
@@ -286,12 +335,11 @@ class ProductProcessor:
             'extra_words': lookup_data['extra_words']
         }
 
-    def process_master_product(self, brand_id: int) -> dict:
+    def process_master_product(self) -> dict:
         prepared = self.prepare_process_product(self.product.name)
         upd_data = {
             'processed_name': prepared['processed'],
-            'brand_node_id': brand_id if brand_id else prepared[
-                'brand_node_id']
+            'brand_node_id': prepared['brand_node_id']
         }
         if prepared['extra_words']:
             non_attribute_words = ' '.join(prepared['extra_words'])
@@ -358,7 +406,7 @@ class ProductProcessor:
             # TEMPORARY COMMENT THIS OUT. WE SHOULD ONLY PROCESS MASTER PRODUCT WHEN WE HAVE
             #  JUST INSERTED A NEW MASTER PRODUCT. NOT ON UPDATES
             # if just_inserted:
-            self.process_master_product(brand_id=brand_id)
+            self.process_master_product()
             #    just_inserted = False
 
         raw_reviews = prepare_reviews(product.reviews)
