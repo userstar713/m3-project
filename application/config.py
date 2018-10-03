@@ -15,6 +15,7 @@ CACHE_TYPE = getenv('CACHE_TYPE',
 # Redis settings (Flask-Caching)
 #
 REDIS_HOST = getenv('REDIS_HOST', 'redis://redis:6579')
+assert REDIS_HOST.startswith('redis://')
 REDIS_DB = int(getenv('REDIS_DB', 1))
 
 
