@@ -486,7 +486,7 @@ class ProductProcessor:
                 # price_int=price_int)
             )
             db.session.commit()
-
+        sav_list = []
         for j, (da_code, value) in enumerate(self.product.as_dict().items()):
             if not value or da_code in ['price', 'qoh']:
                 # Do nothing if an attribute does not have any value OR it is
@@ -510,7 +510,7 @@ class ProductProcessor:
 
             # `sav` is a `source attribute value`
             assert self.source_product_id
-            sav_list = self.generate_sav_list(value=value,
+            savs = self.generate_sav_list(value=value,
                                               da_id=da[
                                                   'id'],
                                               da_code=da_code,
@@ -518,9 +518,8 @@ class ProductProcessor:
                                               value_key=
                                               DATATYPES[
                                                   datatype])
+            sav_list += savs
 
-            for sav in sav_list:
-                self.sav_bulk_adder.add(sav)
 
             brand_id = value if da_code == 'brand' else None
             # just_inserted = not bool(master_product.brand_node_id)
@@ -529,7 +528,8 @@ class ProductProcessor:
             # if just_inserted:
             self.process_master_product()
             #    just_inserted = False
-
+        for sav in sav_list:
+            self.sav_bulk_adder.add(sav)
         raw_reviews = prepare_reviews(product.reviews)
         to_insert_reviews = [
             self.generate_review(data=r)
