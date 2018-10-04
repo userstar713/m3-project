@@ -378,12 +378,24 @@ class ProductProcessor:
         qoh = int(product.qoh)
         price_int = round(price * 100)
 
-        SourceLocationProductProxy.get_or_create(
+        slp = SourceLocationProductProxy.get_by(
             source_product_id=self.source_product_id,
-            source_location_id=default_location_id,
-            price=price,
-            qoh=qoh,
-            price_int=price_int)
+            source_location_id=default_location_id
+        )
+        if slp:
+            slp.price=price
+            slp.qoh=qoh
+            slp.price_int=price_int
+            db.session.commit()
+        else:
+            db.session.add(SourceLocationProductProxy(
+                source_product_id=self.source_product_id,
+                source_location_id=default_location_id,
+                price=price,
+                qoh=qoh,
+                price_int=price_int)
+            )
+            db.session.commit()
 
         for j, (da_code, value) in enumerate(self.product.as_dict().items()):
             if not value or da_code in ['price', 'qoh']:
