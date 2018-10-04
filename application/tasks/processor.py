@@ -393,8 +393,8 @@ class ProductProcessor:
                 source_product_id=self.source_product_id,
                 source_location_id=default_location_id,
                 price=price,
-                qoh=qoh,
-                price_int=price_int)
+                qoh=qoh)
+                #price_int=price_int)
             )
             db.session.commit()
 
