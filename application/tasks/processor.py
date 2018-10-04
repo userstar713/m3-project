@@ -9,13 +9,15 @@ from application.db_extension.models import (db,
                                              SourceProductProxy,
                                              SourceAttributeValue,
                                              DomainReviewer,
-                                             SourceReview)
+                                             SourceReview,
+                                             source_location_product,
+                                             SourceLocationProductProxy)
 from application.db_extension.models import db
 from typing import NamedTuple
 from application.db_extension.routines import (
     get_default_category_id,
     domain_attribute_lookup)
-from application.utils import listify
+from application.utils import listify, get_float_number
 from application.logging import logger
 from sqlalchemy.sql.expression import func
 
@@ -81,7 +83,7 @@ class DomainReviewers:
 
 def process_varietals(product_name, attribute_code, value):
     # logger.debug('process_varietals: {} {}'.format(product_name, attribute_code))
-    name_varietals = domain_attribute_lookup(sentence=product_name)
+    name_varietals = domain_attribute_lookup(sentence=product_name).get('attributes', [])
     new_value = value
     if len(name_varietals) > 0:
         new_value = ', '.join(varietal['value'] for varietal in name_varietals)
@@ -109,14 +111,63 @@ class Product(NamedTuple):
     name: str
     source_id: int
     reviews: list
-
+    price: str
+    vintage: str
+    msrp: str
+    brand: str
+    region: str
+    varietals: str
+    foods: str
+    wine_type: str
+    body: str
+    tannin: str
+    image: str
+    characteristics: str
+    description: str
+    purpose: str
+    sku: str
+    bottle_size: str
+    qoh: str
+    highlights: str
+    single_product_url: str
+    alcohol_pct: str
+    drink_from: str
+    drink_to: str
+    acidity: str
+    discount_pct: str
+    flaw: str
     @staticmethod
     def from_raw(source_id: int, product: dict) -> 'Product':
         try:
             _product = {
                 'source_id': source_id,
                 'name': product['name'],
-                'reviews': product['reviews']
+                'reviews': product.get('reviews'),
+                'price': product.get('price'),
+                'vintage': product.get('vintage'),
+                'msrp': product.get('msrp'),
+                'brand': product.get('brand'),
+                'region': product.get('region'),
+                'varietals': product.get('varietals'),
+                'foods': product.get('foods'),
+                'wine_type': product.get('wine_type'),
+                'body': product.get('body'),
+                'tannin': product.get('tannin'),
+                'image': product.get('image'),
+                'characteristics': product.get('characteristics'),
+                'description': product.get('description'),
+                'purpose': product.get('purpose'),
+                'sku': product.get('sku'),
+                'bottle_size': product.get('bottle_size'),
+                'qoh': product.get('qoh'),
+                'highlights': product.get('highlights'),
+                'single_product_url': product.get('single_product_url'),
+                'alcohol_pct': product.get('alcohol_pct'),
+                'drink_from': product.get('drink_from'),
+                'drink_to': product.get('drink_to'),
+                'acidity': product.get('acidity'),
+                'discount_pct': product.get('discount_pct'),
+                'flaw': product.get('flaw'),
             }
         except AttributeError as e:
             logger.critical(f'Error while converting raw product {product}')
@@ -286,12 +337,11 @@ class ProductProcessor:
             'extra_words': lookup_data['extra_words']
         }
 
-    def process_master_product(self, brand_id: int) -> dict:
+    def process_master_product(self) -> dict:
         prepared = self.prepare_process_product(self.product.name)
         upd_data = {
             'processed_name': prepared['processed'],
-            'brand_node_id': brand_id if brand_id else prepared[
-                'brand_node_id']
+            'brand_node_id': prepared['brand_node_id']
         }
         if prepared['extra_words']:
             non_attribute_words = ' '.join(prepared['extra_words'])
@@ -317,6 +367,36 @@ class ProductProcessor:
     def process(self, product: Product):
         self.product = product
         self.create_master_and_source()
+
+        default_location_id = 1 # TODO fix that
+
+        price = get_float_number(product.price)
+        if not price or price < 1:
+            logger.error(
+                'webhook - ERROR - Invalid price, p={}'.format(product))
+            return
+
+        qoh = int(product.qoh)
+        price_int = round(price * 100)
+
+        slp = SourceLocationProductProxy.get_by(
+            source_product_id=self.source_product_id,
+            source_location_id=default_location_id
+        )
+        if slp:
+            slp.price=price
+            slp.qoh=qoh
+            slp.price_int=price_int
+            db.session.commit()
+        else:
+            db.session.add(source_location_product.SourceLocationProduct(
+                source_product_id=self.source_product_id,
+                source_location_id=default_location_id,
+                price=price,
+                qoh=qoh)
+                #price_int=price_int)
+            )
+            db.session.commit()
 
         for j, (da_code, value) in enumerate(self.product.as_dict().items()):
             if not value or da_code in ['price', 'qoh']:
@@ -358,7 +438,7 @@ class ProductProcessor:
             # TEMPORARY COMMENT THIS OUT. WE SHOULD ONLY PROCESS MASTER PRODUCT WHEN WE HAVE
             #  JUST INSERTED A NEW MASTER PRODUCT. NOT ON UPDATES
             # if just_inserted:
-            self.process_master_product(brand_id=brand_id)
+            self.process_master_product()
             #    just_inserted = False
 
         raw_reviews = prepare_reviews(product.reviews)

@@ -88,7 +88,7 @@ def start_synchronization(source_id: int) -> str:
     if source_id == 12345:
         # override id 12345 for test purposes
         redis_key = f'spider::{source_id}::data'
-        data = get_test_products()
+        data = get_test_products()[:1000]
         cache.set(redis_key, pickle.dumps(data, protocol=-1))
         is_use_interim = True # don't run scraper
     else:

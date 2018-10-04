@@ -11,6 +11,9 @@ from application.db_repo.models.pipeline_attribute_value import PipelineAttribut
 from application.db_repo.models.pipeline_review_content import PipelineReviewContent
 from application.db_repo.models import source_review
 from application.db_repo.models.domain_category import DomainCategory
+from application.db_repo.models.source_location import SourceLocation
+
+from application.db_repo.models import source_location_product
 
 from sqlalchemy.sql import ClauseElement
 from sqlalchemy.dialects import postgresql
@@ -19,19 +22,31 @@ from typing import Iterable
 
 
 class GetIdOrCreateMixin:
+    #@classmethod
+    #def get_or_create(cls, defaults=None, **kwargs) -> (ClauseElement, bool):
+    #    instance = db.session.query(cls).filter_by(**kwargs).first()
+    #    if instance:
+    #        return instance, False
+    #    else:
+    #        params = dict((k, v) for k, v in kwargs.items() if
+    #                      not isinstance(v, ClauseElement))
+    #        params.update(defaults or {})
+    #        instance = cls(**params)
+    #        db.session.add(instance)
+    #        return instance, True
     @classmethod
-    def get_or_create(cls, defaults=None, **kwargs) -> (ClauseElement, bool):
-        instance = db.session.query(cls).filter_by(**kwargs).first()
-        if instance:
-            return instance, False
-        else:
-            params = dict((k, v) for k, v in kwargs.items() if
-                          not isinstance(v, ClauseElement))
-            params.update(defaults or {})
-            instance = cls(**params)
-            db.session.add(instance)
-            return instance, True
+    def get_by(cls, **kwargs):
+        return cls.query.filter_by(**kwargs).first()
 
+    @classmethod
+    def get_or_create(cls, **kwargs):
+        r = cls.get_by(**kwargs)
+        if not r:
+            r = cls(**kwargs)
+            db.session.add(r)
+            return r, True
+        else:
+            return r, False
 
 class BulkInsertDoNothingMixin:
     @classmethod
@@ -43,6 +58,9 @@ class BulkInsertDoNothingMixin:
                 ).on_conflict_do_nothing()
             )
         db.session.commit()
+
+class SourceLocationProductProxy(source_location_product.SourceLocationProduct, GetIdOrCreateMixin):
+    pass
 
 class MasterProductProxy(master_product.MasterProduct, GetIdOrCreateMixin):
     pass
