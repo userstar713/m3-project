@@ -10,6 +10,7 @@ from application.db_extension.models import (db,
                                              SourceAttributeValue,
                                              DomainReviewer,
                                              SourceReview,
+                                             source_location_product,
                                              SourceLocationProductProxy)
 from application.db_extension.models import db
 from typing import NamedTuple
@@ -388,7 +389,7 @@ class ProductProcessor:
             slp.price_int=price_int
             db.session.commit()
         else:
-            db.session.add(SourceLocationProductProxy(
+            db.session.add(source_location_product.SourceLocationProduct(
                 source_product_id=self.source_product_id,
                 source_location_id=default_location_id,
                 price=price,
