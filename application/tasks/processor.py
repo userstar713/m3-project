@@ -102,9 +102,6 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
     # We only care about node_id
     # node_id = 12345;
     # return node_id;
-    if attribute_code == 'brand':
-        #replace_with_nlp_ngrams(attribute_value.lower())
-        attribute_value = attribute_value # Fixme
     attr_result = attribute_lookup(sentence=attribute_value)
     if attr_result:
         result = attr_result[0]['node_id']
@@ -359,11 +356,10 @@ class ProductProcessor:
                                                             remove_diacritics(
                                                                 prop)
                                                             if prop else '')
+                if val == -1:
+                    continue
             else:
                 val = prop
-            if datatype == 'node_id' and val == -1:
-                # If we do not find the node_id for some value then lets not insert it.
-                continue
             result.append({
                 'source_product_id': self.source_product_id,
                 'attribute_id': da_id,
@@ -535,6 +531,9 @@ class ProductProcessor:
             self.generate_review(data=r)
             for r in raw_reviews if r
         ]
+        db.session.query(SourceReview).\
+            filter_by(source_product_id=self.source_product_id).delete()
+        db.session.commit()
         for review in to_insert_reviews:
             self.review_bulk_adder.add(review)
         return self.master_product_id

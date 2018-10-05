@@ -237,7 +237,7 @@ def seeding_products_func(sequence_id: int, source_id: int) -> None:
     db.session.commit()
 
 
-def pipe_aggregate(sequence_id: int, source_id: int) -> List:
+def pipe_aggregate(source_id: int, sequence_id: int) -> List:
     q = """SELECT * 
            FROM public.pipe_aggregate(:category_id, 
                                       :source_id, 

@@ -66,19 +66,20 @@ def execute_pipeline(source_id: int,
 
     try:
         logger.info("execute_pipeline: source_into_pipeline_copy_func starts.")
-        source_into_pipeline_copy(sequence_id, source_id)
+        source_into_pipeline_copy(sequence_id=sequence_id, source_id=source_id)
         logger.info("execute_pipeline: seeding_products_func starts.")
-        seeding_products_func(sequence_id, source_id)
+        seeding_products_func(sequence_id=sequence_id, source_id=source_id)
         logger.info(
             "execute_pipeline: pipeline_information_extraction starts.")
-        extractor = PipelineExtractor(source_id, sequence_id,
-                                      debug_product_search_str)
+        extractor = PipelineExtractor(source_id=source_id,
+                                      sequence_id=sequence_id,
+                                      debug_product_search_str=debug_product_search_str)
         extractor.process_all()
 
         logger.info("execute_pipeline: pipe_aggregate starts")
         sequence.state = AGGREGATING
 
-        result = pipe_aggregate(source_id, sequence_id)
+        result = pipe_aggregate(source_id=source_id, sequence_id=sequence_id)
 
         status_msg = result[0] if result else 'Empty'
         logger.info(f'execute_pipeline: pipe_aggregate: '
@@ -88,9 +89,9 @@ def execute_pipeline(source_id: int,
                             f'status msg: {status_msg}')
     except BaseException as e:
         db.session.rollback()
-        set_completion_status(sequence,
-                              source_id,
-                              e)
+        set_completion_status(sequence=sequence,
+                              source_id=source_id,
+                              e=e)
         db.session.commit()
         # print(traceback.format_exception(None, e, e.__traceback__))
         logger.error(
@@ -98,7 +99,7 @@ def execute_pipeline(source_id: int,
         logger.exception('execute_pipeline: got exception')
         raise e
 
-    set_completion_status(sequence, source_id)
+    set_completion_status(sequence=sequence, source_id=source_id)
     db.session.commit()
 
     print(sequence.__dict__)
