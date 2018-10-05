@@ -448,7 +448,7 @@ class ProductProcessor:
             'extra_words': prepared['extra_words']
         }
 
-    @log_durations(logger.debug, unit='ms')
+    @log_durations(logger.info, unit='ms')
     def process(self, product: Product):
         self.product = product
         self.create_master_and_source()
