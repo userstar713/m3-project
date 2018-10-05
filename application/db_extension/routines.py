@@ -28,7 +28,7 @@ def filter_tsquery(s):
     return s.replace("'", " ").replace("!", '').replace("(", '').replace(")",
                                                                          '')
 
-
+@cache.memoize(timeout=60*60*24*7)
 def attribute_lookup(sentence,
                      brand_treatment='exclude'):
     """
@@ -101,7 +101,7 @@ def domain_attribute_lookup(sentence):
     result = attribute_lookup(sentence)
     return {'attributes':result, 'extra_words':[]}
 
-#@cache.memoize(timeout=60*60*24*7)
+#
 
 def _domain_attribute_lookup(sentence):
     print('sentence')
