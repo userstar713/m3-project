@@ -40,4 +40,6 @@ def task_execute_spider(self, source_id: int) -> None:
         #spider_func(f)
         run_spider(spider_cls, f)
         data = [json.loads(line) for line in f]
-        cache.set(f'spider::{source_id}::data', pickle.dumps(data, protocol=-1))
+        cache.set(f'spider::{source_id}::data',
+                  pickle.dumps(data, protocol=-1),
+                  timeout=0)

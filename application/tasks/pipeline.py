@@ -5,6 +5,7 @@ from typing import Optional
 from application.db_extension.routines import (validate_pipeline_run,
                                                source_into_pipeline_copy,
                                                seeding_products_func,
+                                               assign_prototypes_to_products,
                                                pipe_aggregate)
 from application.db_extension.models import db
 from application.db_extension.models import PipelineSequence
@@ -87,11 +88,15 @@ def execute_pipeline(source_id: int,
         if not status_msg.startswith("pipe_aggregate"):
             raise Exception(f'pipe_aggregate is not successful, '
                             f'status msg: {status_msg}')
+
+        logger.info("execute_pipeline: assign_prototypes_to_products starts")
+        assign_prototypes_to_products(source_id=source_id, sequence_id=sequence_id)
+
     except BaseException as e:
         db.session.rollback()
         set_completion_status(sequence=sequence,
                               source_id=source_id,
-                              e=e)
+                              exception=e)
         db.session.commit()
         # print(traceback.format_exception(None, e, e.__traceback__))
         logger.error(

@@ -303,14 +303,13 @@ class PipelineExtractor:
     def generate_extract_result(self, attributes, domain_attributes,
                                 product_id):
         result = []
-        err_no_code = []
+        # err_no_code = []
         for obj in attributes:
             # Lookup id for attribute code
             attributes_same_code = [a.id for a in domain_attributes if
                                     a.code == obj['code']]
             if not attributes_same_code:
-                # TODO check that
-                err_no_code.append(obj['code'])
+            #    err_no_code.append(obj['code'])
                 continue
             attr_id = attributes_same_code[0]
             if 'node_id' in obj:
@@ -348,9 +347,9 @@ class PipelineExtractor:
                 )
             else:
                 raise TypeError
-        logger.warning(f"generate_extract_result:"
-                       f" no domain attributes "
-                       f"with codes: {', '.join(err_no_code)}")
+        #logger.warning(f"generate_extract_result:"
+        #               f" no domain attributes "
+        #               f"with codes: {', '.join(err_no_code)}")
         return result
 
     def extract_information(self, sentence, product_id, extract_name=False, track_to=None):
