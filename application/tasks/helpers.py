@@ -12,6 +12,7 @@ DATATYPES = {
 
 
 def remove_diacritics(s: str) -> str:
+    s = str(s)
     try:
         s = s.encode('raw_unicode_escape').decode('utf8')
     except BaseException:

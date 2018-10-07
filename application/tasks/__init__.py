@@ -1,3 +1,4 @@
+from application.db_extension.models import db
 from .synchronization import start_synchronization, celery
 
 def init_celery(app):
@@ -15,7 +16,14 @@ def init_celery(app):
         abstract = True
         def __call__(self, *args, **kwargs):
             with app.app_context():
-                return TaskBase.__call__(self, *args, **kwargs)
+                try:
+                    response = TaskBase.__call__(self, *args, **kwargs)
+                finally:
+                    # scoped session is being shared between celery and
+                    # web worker, force celery to recreate the new
+                    # session object on the each task
+                    db.session.remove()
+                return response
     celery.Task = AppContextTask
 
     # run finalize to process decorated tasks

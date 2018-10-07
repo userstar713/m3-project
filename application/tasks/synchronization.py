@@ -77,6 +77,8 @@ def get_products_task(_, source_id: int) -> List[dict]:
     """
     redis_key = f'spider::{source_id}::data'
     pickled_products = cache.get(redis_key)
+    if not pickled_products:
+        raise ValueError(f"Interim data is emptpy: {redis_key}")
     products = pickle.loads(pickled_products)
     # return list(chunkify(prepare_products(source_id, products), 500))
     return prepare_products(source_id, products)
@@ -88,7 +90,7 @@ def start_synchronization(source_id: int) -> str:
     if source_id == 12345:
         # override id 12345 for test purposes
         redis_key = f'spider::{source_id}::data'
-        data = get_test_products()[:1000]
+        data = get_test_products()
         cache.set(redis_key, pickle.dumps(data, protocol=-1))
         is_use_interim = True # don't run scraper
     else:

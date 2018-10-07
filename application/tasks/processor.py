@@ -16,7 +16,7 @@ from application.db_extension.models import db
 from typing import NamedTuple
 from application.db_extension.routines import (
     get_default_category_id,
-    domain_attribute_lookup)
+    attribute_lookup)
 from application.utils import listify, get_float_number
 from application.logging import logger
 from sqlalchemy.sql.expression import func
@@ -48,11 +48,68 @@ def get_process_product_attributes():
     return [row[0] for row in rows]
 
 
-def get_domain_taxonomy_node_id_from_dict(attribute_code, attribute_value):
+def get_nlp_ngrams():
+    logger.info('get_nlp_ngrams')
+    q = """SELECT text_value_processed target_text,
+                   replace(text_value_processed,'_',' ') source_text
+            FROM domain_dictionary WHERE is_require_ngram=TRUE
+            ORDER BY char_length(text_value_processed) DESC"""
+    rows = db.session.execute(q)
+    return {row.target_text: row.source_text for row in rows}
+
+
+@cache.memoize(timeout=200)
+def get_nlp_ngrams_regex():
+    ngrams = get_nlp_ngrams()
+    regex = re.compile("(%s)" % "|".join(map(re.escape, ngrams.keys())))
+    return ngrams, regex
+
+
+@cache.memoize(timeout=200)
+def replace_with_nlp_ngrams(cleaned_string):
+    ngrams, regex = get_nlp_ngrams_regex()
+    return regex.sub(
+        lambda mo: ngrams[mo.string[mo.start():mo.end()]], cleaned_string
+    )
+
+    # for nlps in nlp_synonyms:
+    #    # pattern = r'\b{}\b'
+    #    # rg = pattern.format(nlps['source_text'])
+    #    # cleaned_string = re.sub(rg, nlps['target_text'], cleaned_string, flags=re.I)
+    #    # Note: because this is simple replacement, don't need regex and much much faster
+    #    # cleaned_string = cleaned_string.replace(nlps['source_text'], nlps['target_text'])
+    #    cleaned_string = re.sub(r"\b%s\b" % nlps['source_text'], nlps['target_text'], cleaned_string)
+
+    # return cleaned_string
+
+
+def get_domain_taxonomy_node_id_from_dict(attribute_code,
+                                          attribute_value):
     """
     This function should return a single integer
     """
-    return -1
+    # If result is empty array, return -1
+    # else, get the value for results[0].node_id  (node_id from the first object in array) and return that
+    # To see format of response to above API, try this as body:
+    # {"text":"Latour", "category":1, "attr_codes":["brand"], "attr_restriction":null}
+    # Response --> {"attributes":
+    # [{"code":"brand",
+    #  "end":0,
+    # "node_id":3161,
+    #  "original":"Latour",
+    # "start":0,
+    #  "value":"Chateau Latour"}]}
+    # We only care about node_id
+    # node_id = 12345;
+    # return node_id;
+    attr_result = attribute_lookup(sentence=attribute_value)
+    if attr_result:
+        result = attr_result[0]['node_id']
+    else:
+        result = -1
+    # logger.debug("*** NODE ID: {}-{}-{} {} ".format(category_id, attribute_code, attribute_value, result))
+    return result
+
 
 
 class DomainReviewers:
@@ -83,7 +140,7 @@ class DomainReviewers:
 
 def process_varietals(product_name, attribute_code, value):
     # logger.debug('process_varietals: {} {}'.format(product_name, attribute_code))
-    name_varietals = domain_attribute_lookup(sentence=product_name).get('attributes', [])
+    name_varietals = attribute_lookup(sentence=product_name)
     new_value = value
     if len(name_varietals) > 0:
         new_value = ', '.join(varietal['value'] for varietal in name_varietals)
@@ -136,6 +193,7 @@ class Product(NamedTuple):
     acidity: str
     discount_pct: str
     flaw: str
+
     @staticmethod
     def from_raw(source_id: int, product: dict) -> 'Product':
         try:
@@ -178,6 +236,7 @@ class Product(NamedTuple):
     def as_dict(self) -> dict:
         return self._asdict()
 
+
 class BulkAdder:
     def __init__(self, model: db.Model, threshold: int = 10000) -> None:
         assert hasattr(model, 'bulk_insert_do_nothing')
@@ -195,6 +254,33 @@ class BulkAdder:
             self._data
         )
         self._data = []
+
+
+class DomainDictionaryCache:
+    cache = {}
+
+    @staticmethod
+    def _get_key(*args):
+        return "|".join([str(a) for a in args])
+
+    def get_or_set(self, category_id, attribute_code, attribute_value):
+        key = self._get_key(category_id, attribute_code, attribute_value)
+        if key not in self.cache:
+            # _value = db.session.query(
+            #    DomainDictionary.entity_id
+            # ).filter_by(
+            #    attribute_id=da_id,
+            #    text_vector=func.to_tsvector('english', value)
+            # ).first()
+            _value = get_domain_taxonomy_node_id_from_dict(
+                attribute_code=attribute_code,
+                attribute_value=attribute_value
+            )
+            self.cache[key] = _value
+            return _value
+        else:
+            # logger.debug(f"Node ID for {key} is {self.cache[key]}")
+            return self.cache[key]
 
 
 class ProductProcessor:
@@ -270,11 +356,10 @@ class ProductProcessor:
                                                             remove_diacritics(
                                                                 prop)
                                                             if prop else '')
+                if val == -1:
+                    continue
             else:
                 val = prop
-            if datatype == 'node_id' and val == -1:
-                # If we do not find the node_id for some value then lets not insert it.
-                continue
             result.append({
                 'source_product_id': self.source_product_id,
                 'attribute_id': da_id,
@@ -324,8 +409,8 @@ class ProductProcessor:
         # attr_codes = ['vintage','brand','region','quality_level','varietals','wine_type','styles','bottle_size','is_blend','sweetness']
         # attr_codes = get_process_product_attributes()
 
-        lookup_data = domain_attribute_lookup(sentence=unaccented_name)
-        brands = filter_brands(lookup_data['attributes'])
+        attributes = attribute_lookup(sentence=unaccented_name)
+        brands = filter_brands(attributes)
         if len(brands) > 1:  # what to do if more than one brand returned?
             msg = "prepare_process_product returns more than one brand!"
             raise ValueError(msg)
@@ -334,7 +419,7 @@ class ProductProcessor:
         return {
             'processed': unaccented_name,
             'brand_node_id': brand_node_id,
-            'extra_words': lookup_data['extra_words']
+            'extra_words': []
         }
 
     def process_master_product(self) -> dict:
@@ -363,12 +448,12 @@ class ProductProcessor:
             'extra_words': prepared['extra_words']
         }
 
-    @log_durations(logger.debug, unit='ms')
+    @log_durations(logger.info, unit='ms')
     def process(self, product: Product):
         self.product = product
         self.create_master_and_source()
 
-        default_location_id = 1 # TODO fix that
+        default_location_id = 1  # TODO fix that
 
         price = get_float_number(product.price)
         if not price or price < 1:
@@ -384,9 +469,9 @@ class ProductProcessor:
             source_location_id=default_location_id
         )
         if slp:
-            slp.price=price
-            slp.qoh=qoh
-            slp.price_int=price_int
+            slp.price = price
+            slp.qoh = qoh
+            slp.price_int = price_int
             db.session.commit()
         else:
             db.session.add(source_location_product.SourceLocationProduct(
@@ -394,10 +479,10 @@ class ProductProcessor:
                 source_location_id=default_location_id,
                 price=price,
                 qoh=qoh)
-                #price_int=price_int)
+                # price_int=price_int)
             )
             db.session.commit()
-
+        sav_list = []
         for j, (da_code, value) in enumerate(self.product.as_dict().items()):
             if not value or da_code in ['price', 'qoh']:
                 # Do nothing if an attribute does not have any value OR it is
@@ -421,7 +506,7 @@ class ProductProcessor:
 
             # `sav` is a `source attribute value`
             assert self.source_product_id
-            sav_list = self.generate_sav_list(value=value,
+            savs = self.generate_sav_list(value=value,
                                               da_id=da[
                                                   'id'],
                                               da_code=da_code,
@@ -429,9 +514,8 @@ class ProductProcessor:
                                               value_key=
                                               DATATYPES[
                                                   datatype])
+            sav_list += savs
 
-            for sav in sav_list:
-                self.sav_bulk_adder.add(sav)
 
             brand_id = value if da_code == 'brand' else None
             # just_inserted = not bool(master_product.brand_node_id)
@@ -440,12 +524,16 @@ class ProductProcessor:
             # if just_inserted:
             self.process_master_product()
             #    just_inserted = False
-
+        for sav in sav_list:
+            self.sav_bulk_adder.add(sav)
         raw_reviews = prepare_reviews(product.reviews)
         to_insert_reviews = [
             self.generate_review(data=r)
             for r in raw_reviews if r
         ]
+        db.session.query(SourceReview).\
+            filter_by(source_product_id=self.source_product_id).delete()
+        db.session.commit()
         for review in to_insert_reviews:
             self.review_bulk_adder.add(review)
         return self.master_product_id

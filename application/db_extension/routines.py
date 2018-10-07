@@ -7,7 +7,7 @@ from funcy import log_durations
 
 
 def validate_pipeline_run(sequence_id: int, source_id: int):
-    return True # FIXME always return true
+    return True  # FIXME always return true
     q = """SELECT check_type, status 
            FROM public.validate_pipeline_run(:category_id, 
                                              :source_id, 
@@ -29,6 +29,7 @@ def filter_tsquery(s):
                                                                          '')
 
 
+@cache.memoize(timeout=60 * 60 * 24 * 7)
 def attribute_lookup(sentence,
                      brand_treatment='exclude'):
     """
@@ -99,9 +100,10 @@ def attribute_lookup(sentence,
 
 def domain_attribute_lookup(sentence):
     result = attribute_lookup(sentence)
-    return {'attributes':result, 'extra_words':[]}
+    return {'attributes': result, 'extra_words': []}
 
-#@cache.memoize(timeout=60*60*24*7)
+
+#
 
 def _domain_attribute_lookup(sentence):
     print('sentence')
@@ -123,7 +125,7 @@ def _domain_attribute_lookup(sentence):
                 # only allow one of these. So disallow 2nd+
                 found_attrs = list(filter(
                     lambda a: (a.get('value', None) == atb['value']
-                              and a.get('code', None) != atb['code']),
+                               and a.get('code', None) != atb['code']),
                     frs['attributes']))
 
                 if not found_attrs:
@@ -173,7 +175,7 @@ def _domain_attribute_lookup(sentence):
 
         final_result.append(frs)
 
-    return {'attributes':final_result, 'extra_words':[]}
+    return {'attributes': final_result, 'extra_words': []}
 
 
 def get_description_contents_data(sequence_id: int, source_id: int):
@@ -237,7 +239,7 @@ def seeding_products_func(sequence_id: int, source_id: int) -> None:
     db.session.commit()
 
 
-def pipe_aggregate(sequence_id: int, source_id: int) -> List:
+def pipe_aggregate(source_id: int, sequence_id: int) -> List:
     q = """SELECT * 
            FROM public.pipe_aggregate(:category_id, 
                                       :source_id, 
@@ -252,3 +254,28 @@ def pipe_aggregate(sequence_id: int, source_id: int) -> List:
                                 }).first()
     db.session.commit()
     return result
+
+
+def assign_prototypes_to_products(
+        source_id: int,
+        sequence_id: int,
+        category_id: int = get_default_category_id(),
+        is_partial: bool = False
+    ) -> None:
+    q = """
+        SELECT * 
+        FROM public.assign_prototypes_to_products(
+            :category_id,
+            :source_id,
+            :sequence_id, 
+            :is_partial
+        )
+    """
+    db.session.execute(q,
+                       {
+                           'category_id': category_id,
+                           'source_id': source_id,
+                           'sequence_id': sequence_id,
+                           'is_partial': is_partial
+                       }).first()
+    db.session.commit()
