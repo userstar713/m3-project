@@ -1,5 +1,5 @@
 from .models import db, DomainCategory
-from typing import List
+from typing import List, Optional
 from flask import current_app
 from application.caching import cache
 import re
@@ -259,7 +259,7 @@ def pipe_aggregate(source_id: int, sequence_id: int) -> List:
 def assign_prototypes_to_products(
         source_id: int,
         sequence_id: int,
-        category_id: int = get_default_category_id(),
+        category_id: Optional[int] = None,
         is_partial: bool = False
     ) -> None:
     q = """
@@ -271,6 +271,8 @@ def assign_prototypes_to_products(
             :is_partial
         )
     """
+    if category_id is None:
+        category_id = get_default_category_id()
     db.session.execute(q,
                        {
                            'category_id': category_id,
