@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "17cde77a44a7e804af7defdd7569ba77ca0b521487dec5941a0538cd98f23642"
+            "sha256": "dd3abda1ce5ac3411bc5f3d6fa4c2ac4eca17f2efee67db151d3d00955752970"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -57,6 +57,13 @@
             ],
             "index": "pypi",
             "version": "==4.2.1"
+        },
+        "celery-redbeat": {
+            "hashes": [
+                "sha256:fa1951cee7dfb8e185f53ce6dfb78f53b66ace76d5799f67ddac75ae1550aa87"
+            ],
+            "index": "pypi",
+            "version": "==0.11.1"
         },
         "certifi": {
             "hashes": [
@@ -416,6 +423,13 @@
                 "sha256:6488f1423b00f73b7ad5167885312bb0ce410d3312eb212393795b53c8caa580"
             ],
             "version": "==18.0.0"
+        },
+        "python-dateutil": {
+            "hashes": [
+                "sha256:1adb80e7a782c12e52ef9a8182bebeb73f1d7e24e374397af06fb4956c8dc5c0",
+                "sha256:e27001de32f627c22380a688bcc43ce83504a7bc5da472209b4c70f02829f0b8"
+            ],
+            "version": "==2.7.3"
         },
         "pytz": {
             "hashes": [

@@ -15,6 +15,7 @@ unidecode = "*"
 gunicorn = "*"
 gevent = "*"
 requests = "*"
+celery-redbeat = "*"
 
 [dev-packages]
 
