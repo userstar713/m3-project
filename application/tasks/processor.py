@@ -520,12 +520,12 @@ class ProductProcessor:
 
 
             brand_id = value if da_code == 'brand' else None
-            # just_inserted = not bool(master_product.brand_node_id)
-            # TEMPORARY COMMENT THIS OUT. WE SHOULD ONLY PROCESS MASTER PRODUCT WHEN WE HAVE
-            #  JUST INSERTED A NEW MASTER PRODUCT. NOT ON UPDATES
-            # if just_inserted:
-            self.process_master_product()
-            #    just_inserted = False
+        # just_inserted = not bool(master_product.brand_node_id)
+        # TEMPORARY COMMENT THIS OUT. WE SHOULD ONLY PROCESS MASTER PRODUCT WHEN WE HAVE
+        #  JUST INSERTED A NEW MASTER PRODUCT. NOT ON UPDATES
+        # if just_inserted:
+        self.process_master_product()
+        #    just_inserted = False
         for sav in sav_list:
             self.sav_bulk_adder.add(sav)
         raw_reviews = prepare_reviews(product.reviews)
