@@ -16,6 +16,7 @@ gunicorn = "*"
 gevent = "*"
 requests = "*"
 celery-redbeat = "*"
+sqlalchemy = "*"
 
 [dev-packages]
 
