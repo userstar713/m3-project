@@ -411,7 +411,7 @@ class ProductProcessor:
         # attr_codes = ['vintage','brand','region','quality_level','varietals','wine_type','styles','bottle_size','is_blend','sweetness']
         # attr_codes = get_process_product_attributes()
 
-        attributes = attribute_lookup(sentence=unaccented_name)
+        attributes = attribute_lookup(sentence=unaccented_name, brand_treatment='include')
         brands = filter_brands(attributes)
         if len(brands) > 1:  # what to do if more than one brand returned?
             logger.warning("prepare_process_product returns more than one brand! using first")
