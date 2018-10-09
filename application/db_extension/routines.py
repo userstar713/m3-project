@@ -31,7 +31,7 @@ def filter_tsquery(s):
 
 @cache.memoize(timeout=60 * 60 * 24 * 7)
 def attribute_lookup(sentence,
-                     brand_treatment='exclude'):
+                     brand_treatment='include'):
     """
     function attribute_lookup2(p_category_id bigint,
                                p_search_str text,

@@ -412,8 +412,8 @@ class ProductProcessor:
         attributes = attribute_lookup(sentence=unaccented_name)
         brands = filter_brands(attributes)
         if len(brands) > 1:  # what to do if more than one brand returned?
-            msg = "prepare_process_product returns more than one brand!"
-            raise ValueError(msg)
+            logger.warning("prepare_process_product returns more than one brand! using first")
+            logger.warning(brands)
         brand_node_id = brands[0]['node_id'] if brands else None
         # logger.info("preparing product finished")
         return {
