@@ -13,6 +13,7 @@ from application.db_repo.models import source_review
 from application.db_repo.models.domain_category import DomainCategory
 from application.db_repo.models.source_location import SourceLocation
 
+from application.db_repo.models import source_location
 from application.db_repo.models import source_location_product
 
 from sqlalchemy.sql import ClauseElement

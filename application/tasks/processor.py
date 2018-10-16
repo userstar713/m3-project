@@ -10,6 +10,7 @@ from application.db_extension.models import (db,
                                              SourceAttributeValue,
                                              DomainReviewer,
                                              SourceReview,
+                                             source_location,
                                              source_location_product,
                                              SourceLocationProductProxy)
 from application.db_extension.models import db
@@ -455,8 +456,12 @@ class ProductProcessor:
         self.product = product
         self.create_master_and_source()
 
-        default_location_id = 1  # TODO fix that
 
+        location_id = db.session.query(
+            source_location.SourceLocation.id
+        ).filter_by(
+            source_id=product.source_id
+        ).first()[0]
         price = get_float_number(product.price)
         if not price or price < 1:
             logger.error(
@@ -464,11 +469,11 @@ class ProductProcessor:
             return
 
         qoh = int(product.qoh)
-        price_int = round(price * 100)
+        price_int = round(price * 100)  # TODO Check why it's multiplied by 100
 
         slp = SourceLocationProductProxy.get_by(
             source_product_id=self.source_product_id,
-            source_location_id=default_location_id
+            source_location_id=location_id
         )
         if slp:
             slp.price = price
@@ -478,10 +483,10 @@ class ProductProcessor:
         else:
             db.session.add(source_location_product.SourceLocationProduct(
                 source_product_id=self.source_product_id,
-                source_location_id=default_location_id,
+                source_location_id=location_id,
                 price=price,
+                price_int=price_int,
                 qoh=qoh)
-                # price_int=price_int)
             )
             db.session.commit()
         sav_list = []
