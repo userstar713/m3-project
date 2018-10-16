@@ -203,7 +203,7 @@ class Product(NamedTuple):
             _product = {
                 'source_id': source_id,
                 'name': product['name'],
-                'reviews': product.get('reviews'),
+                'reviews': product.get('reviews') or product.get('_reviews'),
                 'price': product.get('price'),
                 'vintage': product.get('vintage'),
                 'msrp': product.get('msrp'),
