@@ -49,16 +49,16 @@ class GetIdOrCreateMixin:
         else:
             return r, False
 
+
 class BulkInsertDoNothingMixin:
+
     @classmethod
     def bulk_insert_do_nothing(cls, items: Iterable[dict]) -> None:
-        for item in items:
-            db.session.execute(
-                postgresql.insert(cls.__table__).values(
-                    **item
-                ).on_conflict_do_nothing()
+        if items:
+            db.session.bulk_insert_mappings(
+                cls, items
             )
-        db.session.commit()
+            db.session.commit()
 
 class SourceLocationProductProxy(source_location_product.SourceLocationProduct, GetIdOrCreateMixin):
     pass
