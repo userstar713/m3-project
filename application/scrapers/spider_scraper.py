@@ -5,6 +5,7 @@ from typing import List
 from scrapy.crawler import CrawlerRunner
 
 from twisted.internet import reactor
+from application.spiders import klwines
 from .base import BaseScraper
 
 def run_spider(spider_cls, tmp_file):
