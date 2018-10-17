@@ -462,6 +462,7 @@ class ProductProcessor:
         ).filter_by(
             source_id=product.source_id
         ).first()[0]
+
         price = get_float_number(product.price)
         if not price or price < 1:
             logger.error(
@@ -525,12 +526,8 @@ class ProductProcessor:
 
 
             brand_id = value if da_code == 'brand' else None
-        # just_inserted = not bool(master_product.brand_node_id)
-        # TEMPORARY COMMENT THIS OUT. WE SHOULD ONLY PROCESS MASTER PRODUCT WHEN WE HAVE
-        #  JUST INSERTED A NEW MASTER PRODUCT. NOT ON UPDATES
-        # if just_inserted:
         self.process_master_product()
-        #    just_inserted = False
+        self.clean_source_tables(self.source_product_id)
         for sav in sav_list:
             self.sav_bulk_adder.add(sav)
         raw_reviews = prepare_reviews(product.reviews)
@@ -538,9 +535,19 @@ class ProductProcessor:
             self.generate_review(data=r)
             for r in raw_reviews if r
         ]
-        db.session.query(SourceReview).\
-            filter_by(source_product_id=self.source_product_id).delete()
-        db.session.commit()
         for review in to_insert_reviews:
             self.review_bulk_adder.add(review)
         return self.master_product_id
+
+    def clean_source_tables(self, product_id: int) -> None:
+        db.session.query(
+            SourceAttributeValue
+        ).filter_by(
+            source_product_id=product_id
+        ).delete()
+        db.session.query(
+            SourceReview
+        ).filter_by(
+            source_product_id=product_id
+        ).delete()
+        db.session.commit()
