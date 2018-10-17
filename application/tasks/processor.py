@@ -328,7 +328,7 @@ class ProductProcessor:
         score_num = data.get('score_num',
                              int(score_str) if str(score_str).isdigit() else 0)
         # Weed out anomalies
-        if score_num < 70:
+        if score_num and score_num < 70:
             score_num = None
 
         return {

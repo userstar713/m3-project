@@ -217,14 +217,14 @@ class ParsedProduct:
             reviewer_name = clean(
                 ''.join(rp.xpath('text()').extract())
             )
-            review_text = clean(''.join(text.xpath('text()').extract()))
+            content = clean(''.join(text.xpath('text()').extract()))
 
             if 'K&L' in reviewer_name:
                 reviews.append({
                     'reviewer_name': 'K&LNotes',
-                    'score': None,
-                    'score_str': '',
-                    'review_text': review_text
+                    'score_num': None,
+                    'score_str': None,
+                    'content': content
                 })
             else:
                 raw_points = rp.xpath('span/text()')
@@ -232,13 +232,15 @@ class ParsedProduct:
                     score = clean(
                         raw_points[0].extract()
                     ).replace('points', '').strip()
+                    if '-' in score:
+                        score = score.split('-')[-1]
                 else:
                     score = None
                 reviews.append({
-                    'reviewer_name': None,
-                    'score': score,
-                    'score_str': None,
-                    'review_text': review_text
+                    'reviewer_name': reviewer_name,
+                    'score_num': score and int(score),
+                    'score_str': score,
+                    'content': content
                 })
         return reviews
 
