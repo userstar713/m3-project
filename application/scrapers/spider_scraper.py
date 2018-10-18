@@ -5,6 +5,7 @@ from typing import List
 from scrapy.crawler import CrawlerRunner
 
 from twisted.internet import reactor
+from application.config import SCRAPER_PRODUCTS_LIMIT
 from application.spiders import klwines
 from .base import BaseScraper
 
@@ -12,6 +13,7 @@ def run_spider(spider_cls, tmp_file):
     runner = CrawlerRunner({
         'CONCURRENT_REQUESTS': klwines.CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': klwines.COOKIES_DEBUG,
+        'CLOSESPIDER_PAGECOUNT': SCRAPER_PRODUCTS_LIMIT,  # TODO for testing purposes, remove this on production
         'FEED_FORMAT': 'jsonlines',
         'FEED_URI': f'file://{tmp_file.name}',
         'DOWNLOADER_CLIENT_METHOD': 'TLSv1.2',
