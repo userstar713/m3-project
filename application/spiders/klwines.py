@@ -264,7 +264,7 @@ class WineItem(Item):
     region = Field()
     varietals = Field()
     # foods = Field()
-    # wine_type = Field()
+    wine_type = Field()
     # body = Field()
     # tannin = Field()
     image = Field()
