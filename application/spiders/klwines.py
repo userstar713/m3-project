@@ -111,6 +111,7 @@ class ParsedProduct:
             'varietals': self.get_varietals(),
             'region': self.get_region(),
             'alcohol_pct': self.get_alcohol_pct(),
+            'wine_type': self.additional['wine_type'],
             'reviews': self.get_reviews(),
             'bottle_size': self.get_bottle_size(),
         }
@@ -153,44 +154,40 @@ class ParsedProduct:
             'varietals': [],
             'alcohol_pct': None,
             'name_varietal': None,
-            'red_white_type': None,
+            'wine_type': None,
             'region': None,
-            'other': None
+            'other': None,
         }
-        rows = self.r.xpath('div.addtl-info-block/tr')
+        rows = self.r.xpath('div.addtl-info-block')
         for row in rows:
             title = clean(
-                row.xpath('td[@class="detail_td1"]/text()').extract())
+                row.xpath('//td[@class="detail_td1"]/text()').extract())
+            value = row.xpath(
+                '//td[@class="detail_td"]/text()').extract()
             if title == "Alcohol Content (%):":
-                value = row.xpath(
-                    'td[@class="detail_td"]/text()').extract()
                 additional['alcohol_pct'] = value
-                break
-            else:
-                value = clean(
-                    row.xpath('td[@class="detail_td"]/h3/text()').extract())
-                if title == "Varietal:":
-                    value = value.replace(" and ", " ")
-                    red_white_type = None
-                    if "Other White" in value:
-                        value = None
-                        red_white_type = ["white", "sparkling"]
-                    elif "Other Red" in value:
-                        value = None
-                        red_white_type = "red"
+            elif title == "Varietal:":
+                value = value.replace(" and ", " ")
+                wine_type = None
+                if "Other White" in value:
+                    value = None
+                    wine_type = ["white", "sparkling"]
+                elif "Other Red" in value:
+                    value = None
+                    wine_type = "red"
 
-                    additional['name_varietal'] = value
-                    additional['varietals'] = []
-                    if value:
-                        additional['varietals'].append(value)
-                    if red_white_type:
-                        additional['red_white_type'] = red_white_type
-                elif title == "Country:":
-                    additional['country'] = value
-                elif title == "Sub-Region:":
-                    additional['region'] = value
-                elif title == "Specific Appellation:":
-                    additional['region'] = value
+                additional['name_varietal'] = value
+                additional['varietals'] = []
+                if value:
+                    additional['varietals'].append(value)
+                if wine_type:
+                    additional['wine_type'] = wine_type
+            elif title == "Country:":
+                additional['country'] = value
+            elif title == "Sub-Region:":
+                additional['region'] = value
+            elif title == "Specific Appellation:":
+                additional['region'] = value
         return additional
 
     def get_bottle_size(self) -> int:

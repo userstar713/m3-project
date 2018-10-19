@@ -413,7 +413,6 @@ class ProductProcessor:
         # attr_codes = get_process_product_attributes()
 
         attributes = attribute_lookup(sentence=unaccented_name, brand_treatment='include')
-        logger.warning("NEW BUILD")
         brands = filter_brands(attributes)
         if len(brands) > 1:  # what to do if more than one brand returned?
             logger.warning("prepare_process_product returns more than one brand! using first")
@@ -492,12 +491,9 @@ class ProductProcessor:
             )
             db.session.commit()
         sav_list = []
-        for j, (da_code, value) in enumerate(self.product.as_dict().items()):
-            if not value or da_code in ['price', 'qoh']:
-                # Do nothing if an attribute does not have any value OR it is
-                # either 'price' OR 'qoh' because we have already put the qoh
-                # and price in source_location_products
-                continue
+        for (da_code, value) in self.product.as_dict().items():
+            logger.warning(f'DA CODE {da_code}')
+            logger.warning(f'DA VALUE {value}')
             da = self.domain_attributes.get(da_code)
             # Skip the property
             # if there is no domain attribute record for the property
@@ -509,6 +505,7 @@ class ProductProcessor:
             datatype = 'node_id' if da['has_taxonomy'] else da['datatype']
             # replace original varietals if varietal in name
             if da_code == 'varietals':
+
                 value = process_varietals(product_name=self.product.name,
                                           attribute_code=da_code,
                                           value=value)
