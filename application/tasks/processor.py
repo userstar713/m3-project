@@ -30,6 +30,20 @@ def filter_brands(attributes: list) -> list:
     """
     return [a for a in attributes if a['code'] == 'brand']
 
+def get_brands(unaccented_name: str) -> list:
+    # processed = cleanup_string(name, check_synonyms=False)
+
+    # Test with fixed codes here. If works, then add new column to domain attributes and use that to filter attributes
+    # attr_codes = []
+    # attr_codes = ['vintage','brand','region','quality_level','varietals','wine_type','styles','bottle_size','is_blend','sweetness']
+    # attr_codes = get_process_product_attributes()
+
+    attributes = attribute_lookup(sentence=unaccented_name, brand_treatment='include')
+    brands = filter_brands(attributes)
+    if len(brands) > 1:  # what to do if more than one brand returned?
+        logger.warning("prepare_process_product returns more than one brand! using first")
+        brands = sorted(brands, key=lambda x: x.get('start', 999) or 999)
+    return brands
 
 @cache.memoize()
 def get_nlp_ngrams():
@@ -408,19 +422,8 @@ class ProductProcessor:
         # pipeline_attribute_lookup already calls cleanup_string() below
         # name = self.replace_with_nlp_ngrams(name.lower())
         unaccented_name = remove_diacritics(name)
-        # processed = cleanup_string(name, check_synonyms=False)
-
-        # Test with fixed codes here. If works, then add new column to domain attributes and use that to filter attributes
-        # attr_codes = []
-        # attr_codes = ['vintage','brand','region','quality_level','varietals','wine_type','styles','bottle_size','is_blend','sweetness']
-        # attr_codes = get_process_product_attributes()
-
-        attributes = attribute_lookup(sentence=unaccented_name, brand_treatment='include')
-        brands = filter_brands(attributes)
-        if len(brands) > 1:  # what to do if more than one brand returned?
-            logger.warning("prepare_process_product returns more than one brand! using first")
-            brands = sorted(brands, key=lambda x: x.get('start', 999) or 999)
-        brand_node_id = brands[0]['node_id'] if brands else None
+        brands = get_brands(unaccented_name)
+        brand_node_id = brands and brands[0]['node_id']
         # logger.info("preparing product finished")
         return {
             'processed': unaccented_name,
@@ -456,6 +459,10 @@ class ProductProcessor:
 
     @log_durations(logger.info, unit='ms')
     def process(self, product: Product):
+        if not product.brand:
+            unaccented_name = remove_diacritics(product.name)
+            brands = get_brands(unaccented_name)
+            product.brand = brands and brands[0]['value']
         self.product = product
         self.create_master_and_source()
 
