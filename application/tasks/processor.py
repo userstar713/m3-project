@@ -248,9 +248,10 @@ class BulkAdder:
         self._data = []
 
     def add(self, data: dict) -> None:
-        self._data.append(data)
-        if len(self._data) == self._threshold:
-            self.flush()
+        if data not in self._data:
+            self._data.append(data)
+            if len(self._data) == self._threshold:
+                self.flush()
 
     def flush(self) -> None:
         self._model.bulk_insert_do_nothing(
@@ -363,7 +364,7 @@ class ProductProcessor:
                     continue
             else:
                 val = prop
-            result.append({
+            res = {
                 'source_product_id': self.source_product_id,
                 'attribute_id': da_id,
                 'datatype': datatype,
@@ -374,8 +375,10 @@ class ProductProcessor:
                 'value_float': None,
                 'value_boolean': None,
                 'value_text': None,
-                value_key: val
-            })
+            }
+            if val:
+                res[value_key] = val
+            result.append(res)
         return result
 
     def create_master_and_source(self):
@@ -492,8 +495,6 @@ class ProductProcessor:
             db.session.commit()
         sav_list = []
         for (da_code, value) in self.product.as_dict().items():
-            logger.warning(f'DA CODE {da_code}')
-            logger.warning(f'DA VALUE {value}')
             da = self.domain_attributes.get(da_code)
             # Skip the property
             # if there is no domain attribute record for the property

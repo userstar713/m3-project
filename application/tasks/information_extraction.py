@@ -331,7 +331,7 @@ class PipelineExtractor:
                         'source_id': self.source_id,
                         'datatype': "float",
                         'value_node_id': None,
-                        'value_float': obj['value_float']
+                        'value_float': obj['value_float'],
                     }
                 )
 
