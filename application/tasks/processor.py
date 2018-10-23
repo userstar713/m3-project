@@ -30,6 +30,12 @@ def filter_brands(attributes: list) -> list:
     """
     return [a for a in attributes if a['code'] == 'brand']
 
+def get_brand(name: str) -> str:
+    unaccented_name = remove_diacritics(name)
+    brands = get_brands(unaccented_name)
+    brand = brands and brands[0]['value'] or None
+    return brand
+
 def get_brands(unaccented_name: str) -> list:
     # processed = cleanup_string(name, check_synonyms=False)
 
@@ -119,7 +125,7 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
     # We only care about node_id
     # node_id = 12345;
     # return node_id;
-    attr_result = attribute_lookup(sentence=attribute_value)
+    attr_result = attribute_lookup(sentence=attribute_value, brand_treatment='include')
     if attr_result:
         result = attr_result[0]['node_id']
     else:
@@ -221,7 +227,7 @@ class Product(NamedTuple):
                 'price': product.get('price'),
                 'vintage': product.get('vintage'),
                 'msrp': product.get('msrp'),
-                'brand': product.get('brand'),
+                'brand': product.get('brand') or get_brand(product['name']),
                 'region': product.get('region'),
                 'varietals': product.get('varietals'),
                 'foods': product.get('foods'),
@@ -392,6 +398,13 @@ class ProductProcessor:
             }
             if val:
                 res[value_key] = val
+                if datatype == 'text':
+                    res['value_text'] = val
+                elif datatype == 'float':
+                    res['value_float'] = val
+                elif datatype == 'integer':
+                    res['value_integer'] = val
+
             result.append(res)
         return result
 
@@ -423,7 +436,7 @@ class ProductProcessor:
         # name = self.replace_with_nlp_ngrams(name.lower())
         unaccented_name = remove_diacritics(name)
         brands = get_brands(unaccented_name)
-        brand_node_id = brands and brands[0]['node_id']
+        brand_node_id = brands and brands[0]['node_id'] or None
         # logger.info("preparing product finished")
         return {
             'processed': unaccented_name,
@@ -459,10 +472,6 @@ class ProductProcessor:
 
     @log_durations(logger.info, unit='ms')
     def process(self, product: Product):
-        if not product.brand:
-            unaccented_name = remove_diacritics(product.name)
-            brands = get_brands(unaccented_name)
-            product.brand = brands and brands[0]['value']
         self.product = product
         self.create_master_and_source()
 
@@ -528,7 +537,8 @@ class ProductProcessor:
                                               value_key=
                                               DATATYPES[
                                                   datatype])
-            sav_list += savs
+            if savs:
+                sav_list += savs
 
 
             brand_id = value if da_code == 'brand' else None
