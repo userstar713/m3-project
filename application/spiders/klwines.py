@@ -111,7 +111,7 @@ class ParsedProduct:
             'varietals': self.get_varietals(),
             'region': self.get_region(),
             'alcohol_pct': self.get_alcohol_pct(),
-            'wine_type': self.additional['wine_type'],
+            'wine_type': self.get_wine_type(),
             'reviews': self.get_reviews(),
             'bottle_size': self.get_bottle_size(),
         }
@@ -149,6 +149,9 @@ class ParsedProduct:
     def get_alcohol_pct(self) -> str:
         return self.additional['alcohol_pct']
 
+    def get_wine_type(self) -> str:
+        return self.additional['wine_type']
+
     def get_additional(self):
         additional = {
             'varietals': [],
@@ -162,11 +165,13 @@ class ParsedProduct:
         for row in rows:
             title = clean(
                 row.xpath('//td[@class="detail_td1"]/text()').extract())
-            value = row.xpath(
-                '//td[@class="detail_td"]/text()').extract()
             if title == "Alcohol Content (%):":
+                value = row.xpath(
+                    '//td[@class="detail_td"]/text()').extract()
                 additional['alcohol_pct'] = value
             elif title == "Varietal:":
+                value = row.xpath(
+                    '//td[@class="detail_td"]/h3/text()').extract()
                 value = value.replace(" and ", " ")
                 wine_type = None
                 if "Other White" in value:
@@ -183,10 +188,16 @@ class ParsedProduct:
                 if wine_type:
                     additional['wine_type'] = wine_type
             elif title == "Country:":
+                value = row.xpath(
+                    '//td[@class="detail_td"]/h3/text()').extract()
                 additional['country'] = value
             elif title == "Sub-Region:":
+                value = row.xpath(
+                    '//td[@class="detail_td"]/h3/text()').extract()
                 additional['region'] = value
             elif title == "Specific Appellation:":
+                value = row.xpath(
+                    '//td[@class="detail_td"]/h3/text()').extract()
                 additional['region'] = value
         return additional
 
