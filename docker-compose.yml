@@ -67,7 +67,7 @@ services:
       - redis
     environment:
       - DEBUG=1
-      - SCRAPER_PRODUCTS_LIMIT=600
+      - SCRAPER_PRODUCTS_LIMIT=0
       - FLASK_APP=application/web
       - FLASK_ENV=development
       - FLASK_RUN_PORT=8080

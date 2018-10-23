@@ -10,16 +10,19 @@ from application.spiders import klwines
 from .base import BaseScraper
 
 def run_spider(spider_cls, tmp_file):
-    runner = CrawlerRunner({
+    settings = {
         'CONCURRENT_REQUESTS': klwines.CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': klwines.COOKIES_DEBUG,
-        'CLOSESPIDER_PAGECOUNT': SCRAPER_PRODUCTS_LIMIT,  # TODO for testing purposes, remove this on production
         'FEED_FORMAT': 'jsonlines',
         'FEED_URI': f'file://{tmp_file.name}',
         'DOWNLOADER_CLIENT_METHOD': 'TLSv1.2',
         'DOWNLOADER_CLIENTCONTEXTFACTORY': klwines.DOWNLOADER_CLIENTCONTEXTFACTORY,
         'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'
-    })
+
+    }
+    if SCRAPER_PRODUCTS_LIMIT:
+        settings['CLOSESPIDER_PAGECOUNT'] = SCRAPER_PRODUCTS_LIMIT  # TODO for testing purposes, remove this on production
+    runner = CrawlerRunner(settings)
     d = runner.crawl(spider_cls)
     d.addBoth(lambda _: reactor.stop())
     reactor.run()
