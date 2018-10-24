@@ -278,12 +278,11 @@ class ParsedProduct:
         return reviews
 
     def get_qoh(self) -> int:
-        rows = self.r.xpath('//div[@class=inventory]/div[@class=column]/tr')
+        rows = self.r.xpath('//div[@class="inventory clearfix"]/div[@class="column"]//tr')
         qoh = 0
-        for row in rows:
-            # location = row.xpath('/td')[0]
-            qty = row.xpath('/td')[:-1]
-            qoh + int(qty)
+        for row in rows[1:]:
+            qty = clean(row.xpath('td/text()')[-1].extract())
+            qoh += int(qty)
         return qoh
 
     def as_dict(self) -> Dict:
