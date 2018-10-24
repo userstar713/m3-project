@@ -105,6 +105,7 @@ class ParsedProduct:
         self.result = {
             'url': self.get_url(),
             'name': self.name,
+            'description': self.get_description(),
             'price': self.get_price(),
             'image': self.get_image(),
             'qoh': self.get_qoh(),
@@ -152,6 +153,23 @@ class ParsedProduct:
     def get_wine_type(self) -> str:
         return self.additional['wine_type']
 
+    def get_description(self) -> str:
+        return self.additional['description']
+
+    def generate_wine_type(self, description: str) -> str:
+        wine_type = ''
+        if "white" in description:
+            wine_type = "White"
+        elif "red" in description:
+            wine_type = "Red"
+        elif 'sparkling' in description:
+            wine_type = "Sparkling"
+        elif 'rose' in description:
+            wine_type = "Rose"
+        elif 'dessert' in description:
+            wine_type = "Dessert"
+        return wine_type
+
     def get_additional(self):
         additional = {
             'varietals': [],
@@ -159,46 +177,35 @@ class ParsedProduct:
             'name_varietal': None,
             'wine_type': None,
             'region': None,
+            'description': None,
             'other': None,
         }
-        rows = self.r.xpath('div.addtl-info-block')
+        rows = self.r.xpath('//div[@class="addtl-info-block"]/table/tr')
+        detail_xpath_value = 'td[@class="detail_td"]/h3/text()'
+        title_xpath = 'td[@class="detail_td1"]/text()'
         for row in rows:
-            title = clean(
-                row.xpath('//td[@class="detail_td1"]/text()').extract())
+            title = clean(row.xpath(title_xpath).extract()[0])
             if title == "Alcohol Content (%):":
                 value = row.xpath(
-                    '//td[@class="detail_td"]/text()').extract()
+                    'td[@class="detail_td"]/text()').extract()[0]
                 additional['alcohol_pct'] = value
-            elif title == "Varietal:":
-                value = row.xpath(
-                    '//td[@class="detail_td"]/h3/text()').extract()
-                value = value.replace(" and ", " ")
-                wine_type = None
-                if "Other White" in value:
-                    value = None
-                    wine_type = ["white", "sparkling"]
-                elif "Other Red" in value:
-                    value = None
-                    wine_type = "red"
+            else:
+                values = row.xpath(detail_xpath_value).extract()
+                value = values and values[0].replace(" and ", " ")
+                if title == "Varietal:":
+                    description = clean(row.xpath('td[@class="detail_td"]/text()').extract()[1])
+                    additional['description'] = description
+                    wine_type = self.generate_wine_type(description)
 
-                additional['name_varietal'] = value
-                additional['varietals'] = []
-                if value:
-                    additional['varietals'].append(value)
-                if wine_type:
-                    additional['wine_type'] = wine_type
-            elif title == "Country:":
-                value = row.xpath(
-                    '//td[@class="detail_td"]/h3/text()').extract()
-                additional['country'] = value
-            elif title == "Sub-Region:":
-                value = row.xpath(
-                    '//td[@class="detail_td"]/h3/text()').extract()
-                additional['region'] = value
-            elif title == "Specific Appellation:":
-                value = row.xpath(
-                    '//td[@class="detail_td"]/h3/text()').extract()
-                additional['region'] = value
+                    additional['name_varietal'] = value
+                    if value:
+                        additional['varietals'].append(value)
+                    if wine_type:
+                        additional['wine_type'] = wine_type
+                elif title in ("Country:",
+                               "Sub-Region:",
+                               "Specific Appellation:"):
+                    additional['region'] = value
         return additional
 
     def get_bottle_size(self) -> int:
@@ -280,7 +287,7 @@ class WineItem(Item):
     # tannin = Field()
     image = Field()
     # characteristics = Field()
-    # description = Field()
+    description = Field()
     # purpose = Field()
     # sku = Field()
     bottle_size = Field()
