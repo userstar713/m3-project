@@ -375,15 +375,14 @@ class ProductProcessor:
         for prop in value:
             # If product property is an array and datatype = node_id
             # then find the node_id_value again for each item.
-            if datatype == 'node_id':
-                val = get_domain_taxonomy_node_id_from_dict(da_code,
-                                                            remove_diacritics(
-                                                                prop)
-                                                            if prop else '')
-                if val == -1:
-                    continue
-            else:
-                val = prop
+            val = prop
+            node_id = None
+            if datatype == 'node_id' and prop:
+                node_id = get_domain_taxonomy_node_id_from_dict(
+                    da_code,
+                    remove_diacritics(prop) if prop else '')
+                # if node_id != -1:
+                val = node_id
             res = {
                 'source_product_id': self.source_product_id,
                 'attribute_id': da_id,
@@ -391,7 +390,7 @@ class ProductProcessor:
                 'source_id': self.product.source_id,
                 'master_product_id': self.master_product_id,
                 'value_integer': None,
-                'value_node_id': None,
+                'value_node_id': node_id,
                 'value_float': None,
                 'value_boolean': None,
                 'value_text': None,
