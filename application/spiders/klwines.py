@@ -98,6 +98,7 @@ def clean(s):
 
 
 class ParsedProduct:
+
     def __init__(self, r: Response) -> None:
         self.r = r
         self.name = self.get_name()
@@ -115,10 +116,18 @@ class ParsedProduct:
             'wine_type': self.get_wine_type(),
             'reviews': self.get_reviews(),
             'bottle_size': self.get_bottle_size(),
+            'sku': self.get_sku(),
         }
 
     def get_url(self) -> str:
         return self.r.url
+
+    def get_sku(self) -> str:
+        value = self.r.xpath(
+            '//span[@class="SKUInformation"]/text()'
+        ).extract()[0]
+        value = value.replace('SKU ', '')
+        return value
 
     def get_name(self) -> str:
         return clean(self.r.xpath(
@@ -289,7 +298,7 @@ class WineItem(Item):
     # characteristics = Field()
     description = Field()
     # purpose = Field()
-    # sku = Field()
+    sku = Field()
     bottle_size = Field()
     qoh = Field()
     # highlights = Field()
