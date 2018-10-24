@@ -1,4 +1,5 @@
 import logging
+import re
 
 from typing import NamedTuple, Iterator, Dict, IO, Union
 from itertools import count
@@ -106,6 +107,7 @@ class ParsedProduct:
         self.result = {
             'url': self.get_url(),
             'name': self.name,
+            'vintage': self.get_vintage(),
             'description': self.get_description(),
             'price': self.get_price(),
             'image': self.get_image(),
@@ -133,6 +135,13 @@ class ParsedProduct:
         return clean(self.r.xpath(
             '//div[@class="result-desc"]/h1/text()'
         )[0].extract())
+
+    def get_vintage(self) -> str:
+        res = ''
+        match = re.match(r'.*([1-3][0-9]{3})', self.name)
+        if match:
+            res = match.group(1)
+        return res
 
     def get_price(self) -> float:
         s = clean(self.r.xpath(
@@ -285,7 +294,7 @@ class WineItem(Item):
     name = Field()
     url = Field()
     price = Field()
-    # vintage = Field()
+    vintage = Field()
     # msrp = Field()
     # brand = Field()
     region = Field()
