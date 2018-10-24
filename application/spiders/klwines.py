@@ -282,6 +282,7 @@ class ParsedProduct:
         qoh = 0
         for row in rows[1:]:
             qty = clean(row.xpath('td/text()')[-1].extract())
+            qty = qty.replace('>', '').replace('<', '')
             qoh += int(qty)
         return qoh
 
