@@ -115,7 +115,7 @@ class ParsedProduct:
             'varietals': self.get_varietals(),
             'region': self.get_region(),
             'alcohol_pct': self.get_alcohol_pct(),
-            'wine_type': self.get_wine_type(),
+            'wine_type': r.meta.get('wine_type'),
             'reviews': self.get_reviews(),
             'bottle_size': self.get_bottle_size(),
             'sku': self.get_sku(),
@@ -174,26 +174,11 @@ class ParsedProduct:
     def get_description(self) -> str:
         return self.additional['description']
 
-    def generate_wine_type(self, description: str) -> str:
-        wine_type = ''
-        if "white" in description:
-            wine_type = "White"
-        elif "red" in description:
-            wine_type = "Red"
-        elif 'sparkling' in description:
-            wine_type = "Sparkling"
-        elif 'rose' in description:
-            wine_type = "Rose"
-        elif 'dessert' in description:
-            wine_type = "Dessert"
-        return wine_type
-
     def get_additional(self):
         additional = {
             'varietals': [],
             'alcohol_pct': None,
             'name_varietal': None,
-            'wine_type': None,
             'region': None,
             'description': None,
             'other': None,
@@ -204,8 +189,8 @@ class ParsedProduct:
         for row in rows:
             title = clean(row.xpath(title_xpath).extract()[0])
             if title == "Alcohol Content (%):":
-                value = row.xpath(
-                    'td[@class="detail_td"]/text()').extract()[0]
+                value = clean(row.xpath(
+                    'td[@class="detail_td"]/text()').extract()[0])
                 additional['alcohol_pct'] = value
             else:
                 values = row.xpath(detail_xpath_value).extract()
@@ -213,13 +198,10 @@ class ParsedProduct:
                 if title == "Varietal:":
                     description = clean(row.xpath('td[@class="detail_td"]/text()').extract()[1])
                     additional['description'] = description
-                    wine_type = self.generate_wine_type(description)
 
                     additional['name_varietal'] = value
                     if value:
                         additional['varietals'].append(value)
-                    if wine_type:
-                        additional['wine_type'] = wine_type
                 elif title in ("Country:",
                                "Sub-Region:",
                                "Specific Appellation:"):
@@ -372,31 +354,58 @@ class KLWinesSpider(BaseSpider):
                       '__RequestVerificationToken': token,
                       'Login.x': "24",
                       'Login.y': "7"},
-            callback=self.get_listpages
+            callback=self.parse_wine_types
         )
 
     def is_not_logged(self, response):
         return "Welcome, John" not in response.body.decode('utf-8')
 
+    def get_wine_types(self, response: Response) -> list:
+        res = []
+        rows = response.xpath('//ul[@id="category-menu-container-ProductType"]/li/a')
+        for row in rows:
+            wine_filter = row.xpath('@href').extract()[0]
+            wine_type = row.xpath('@title').extract()[0]
+            wine_type = wine_type.replace('Wine - ', '')
+            wines_total = row.xpath('span[2]/text()').extract()[0]
+            wines_total = int(wines_total[1:-1])
+            if 'Misc' in wine_type:
+                continue
+            res.append((wine_type, wines_total, wine_filter))
+        return res
+
     def get_listpages(self, response: Response) -> Iterator[Dict]:
+        wine_types = self.get_wine_types(response)
+        max_items = 15000
+        if SCRAPER_PRODUCTS_LIMIT:
+            max_items = SCRAPER_PRODUCTS_LIMIT # override max_items setting for debug purposes
+        step = 500
+        items_scraped = 0
+        for (wine_type, wines_total, wine_filter) in wine_types:
+
+            wine_filter = wine_filter.replace('limit=50', f'limit={step}')
+            wine_filter = wine_filter.replace('&offset=0', '')
+            for offset in range(0, max_items, step):
+                if items_scraped > max_items or items_scraped > wines_total:
+                    break
+                items_scraped += offset
+                url = f'{wine_filter}&offset={offset}'
+                offset += step
+                yield Request(
+                    f'{BASE_URL}{url}',
+                    meta={'wine_type': wine_type},
+                    callback=self.parse_listpage,
+                )
+
+    def parse_wine_types(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):
             self.logger.exception("Login failed")
             return None
-        step = 500
-        max_items = 15000
 
-        if SCRAPER_PRODUCTS_LIMIT:
-            max_items = SCRAPER_PRODUCTS_LIMIT # override max_items setting for debug purposes
 
-        url = f'{BASE_URL}/Products/r?'
-        for page in range(0, max_items, step):
-            from time import sleep
-            sleep(5)
-            yield Request(
-                f'{url}d=0&r=57&z=False&o=8&displayCount={step}&p={page}',
-                meta={'page': page},
-                callback=self.parse_listpage,
-            )
+        wines_url = f'{BASE_URL}/Wines'
+        yield Request(wines_url,
+                      callback=self.get_listpages)
 
     def parse_listpage(self, response: Response) -> Iterator[Dict]:
         """Process http response
@@ -427,7 +436,11 @@ class KLWinesSpider(BaseSpider):
                             )
             for link in links:
                 absolute_url = BASE_URL + link
-                yield Request(absolute_url, callback=self.parse_product, priority=1)
+                yield Request(
+                    absolute_url,
+                    callback=self.parse_product,
+                    meta={'wine_type': response.meta.get('wine_type')},
+                    priority=1)
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):
