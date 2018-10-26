@@ -168,9 +168,6 @@ class ParsedProduct:
     def get_alcohol_pct(self) -> str:
         return self.additional['alcohol_pct']
 
-    def get_wine_type(self) -> str:
-        return self.additional['wine_type']
-
     def get_description(self) -> str:
         return self.additional['description']
 
@@ -366,10 +363,10 @@ class KLWinesSpider(BaseSpider):
         for row in rows:
             wine_filter = row.xpath('@href').extract()[0]
             wine_type = row.xpath('@title').extract()[0]
-            wine_type = wine_type.replace('Wine - ', '')
+            wine_type = wine_type.replace('Wine - ', '').lower()
             wines_total = row.xpath('span[2]/text()').extract()[0]
             wines_total = int(wines_total[1:-1])
-            if 'Misc' in wine_type:
+            if 'misc' in wine_type:
                 continue
             res.append((wine_type, wines_total, wine_filter))
         return res
