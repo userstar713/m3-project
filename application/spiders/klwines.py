@@ -359,7 +359,7 @@ class KLWinesSpider(BaseSpider):
 
     def get_wine_types(self, response: Response) -> list:
         res = []
-        rows = response.xpath('//ul[@id="category-menu-container-ProductType"]/li/a')
+        rows = response.xpath('//ul[@id="category-menu-container-ProductType"]/li/a')[::-1]
         for row in rows:
             wine_filter = row.xpath('@href').extract()[0]
             wine_type = row.xpath('@title').extract()[0]
@@ -373,18 +373,17 @@ class KLWinesSpider(BaseSpider):
 
     def get_listpages(self, response: Response) -> Iterator[Dict]:
         wine_types = self.get_wine_types(response)
-        max_items = 15000
-        if SCRAPER_PRODUCTS_LIMIT:
-            max_items = SCRAPER_PRODUCTS_LIMIT # override max_items setting for debug purposes
         step = 500
         items_scraped = 0
         for (wine_type, wines_total, wine_filter) in wine_types:
 
             wine_filter = wine_filter.replace('limit=50', f'limit={step}')
             wine_filter = wine_filter.replace('&offset=0', '')
-            for offset in range(0, max_items, step):
-                if items_scraped > max_items or items_scraped > wines_total:
-                    break
+            if wines_total % step or wines_total < step:
+                wines_total += step
+
+            for offset in range(0, wines_total, step):
+
                 items_scraped += offset
                 url = f'{wine_filter}&offset={offset}'
                 offset += step
@@ -415,29 +414,26 @@ class KLWinesSpider(BaseSpider):
         selector = "//div[contains(concat(' ', @class, ' '), ' result ')]"
         rows = response.xpath(selector)
         links = []
-        if not rows:
-            raise CloseSpider('no more data')
-        else:
-            for row in rows:
-                if row:
-                    if 'auctionResult-desc' not in row.extract():
-                        link = row.xpath(
-                            'div[@class="result-desc"]/a/@href'
-                        ).extract_first()
-                        if link:
-                            links.append(link)
-                        else:
-                            logging.exception(
-                                f'Link not fount for {row} '
-                                f'on page: {response.url}'
-                            )
-            for link in links:
-                absolute_url = BASE_URL + link
-                yield Request(
-                    absolute_url,
-                    callback=self.parse_product,
-                    meta={'wine_type': response.meta.get('wine_type')},
-                    priority=1)
+        for row in rows:
+            if row:
+                if 'auctionResult-desc' not in row.extract():
+                    link = row.xpath(
+                        'div[@class="result-desc"]/a/@href'
+                    ).extract_first()
+                    if link:
+                        links.append(link)
+                    else:
+                        logging.exception(
+                            f'Link not fount for {row} '
+                            f'on page: {response.url}'
+                        )
+        for link in links:
+            absolute_url = BASE_URL + link
+            yield Request(
+                absolute_url,
+                callback=self.parse_product,
+                meta={'wine_type': response.meta.get('wine_type')},
+                priority=1)
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):
