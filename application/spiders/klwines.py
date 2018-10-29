@@ -156,7 +156,7 @@ class ParsedProduct:
             return float_s
 
     def get_image(self) -> str:
-        return BASE_URL + self.r.xpath('//img[@class="productImg"]/@src')[
+        return self.r.xpath('//img[@class="productImg"]/@src')[
             0].extract()
 
     def get_varietals(self) -> list:
