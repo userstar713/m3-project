@@ -11,7 +11,7 @@ COPY Pipfile.lock .
 
 RUN apk update --no-cache \
     && apk add --no-cache $BUILD_REQUIREMENTS $REQUIREMENTS \
-    && pip3 install pipenv==2018.7.1  \
+    && pip3 install pipenv==2018.10.13  \
     && pipenv install --verbose --system --deploy \
     && python3 -m spacy download en_core_web_sm \
     && apk del $BUILD_REQUIREMENTS
