@@ -1,6 +1,6 @@
 FROM python:3.6-alpine
 ENV BUILD_REQUIREMENTS "git musl-dev libxml2-dev libxslt-dev libffi-dev"
-ENV REQUIREMENTS "bash make libxml2 libxslt postgresql-dev postgresql-client python3-dev build-base linux-headers"
+ENV REQUIREMENTS "bash make libxml2 libxslt postgresql-dev postgresql-client python3-dev build-base linux-headers libstdc++ libpq"
 ENV SCRAPER_PRODUCTS_LIMIT "0"
 
 RUN mkdir -p /srv
