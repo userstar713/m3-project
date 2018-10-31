@@ -8,14 +8,14 @@ from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
+
 from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 from application.spiders.base.wine_item import WineItem
 
-
 CONCURRENT_REQUESTS = 16
 COOKIES_DEBUG = False
-BASE_URL = 'https://www.klwines.com'
+BASE_URL = 'https://winelibrary.com/'
 DOWNLOADER_CLIENTCONTEXTFACTORY = ('application.spiders.base.cipher_factory.'
                                    'CustomCipherContextFactory')
 
@@ -158,16 +158,13 @@ class ParsedProduct(AbstractParsedProduct):
             qoh += int(qty)
         return qoh
 
-    def as_dict(self) -> Dict:
-        return self.result
 
+class WineLibrarySpider(AbstractSpider):
+    """'Spider' which is getting data from winelibrary.com"""
 
-class KLWinesSpider(AbstractSpider):
-    """'Spider' which is getting data from klwines.com"""
-
-    name = 'klwines'
-    LOGIN = "wine_shoper@protonmail.com"
-    PASSWORD = "ilovewine1B"
+    name = 'wine_library'
+    LOGIN = "winetron@protonmail.com"
+    PASSWORD = "ilovewine1A"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -298,5 +295,5 @@ def get_data(tmp_file: IO) -> None:
                        'Chrome/69.0.3497.100 Safari/537.36')
     })
 
-    process.crawl(KLWinesSpider)
+    process.crawl(WineLibrarySpider)
     process.start()

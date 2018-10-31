@@ -2,19 +2,19 @@ import pickle
 import logging
 
 
-from application.tasks.synchronization import celery
-from application.spiders import klwines
-from application.db_extension.models import db, Source
-from application.caching import cache
 from typing import List
 from flask import current_app
-
-from .common import get_products_from_redis
+from application.tasks.synchronization import celery
+from application.spiders import klwines
+from application.spiders import wine_library
+from application.db_extension.models import db, Source
+from application.caching import cache
 
 from application.scrapers import SpiderScraper, CSVURLScraper
+from .common import get_products_from_redis
 
-logger = logging.getLogger(__name__)
 
+LOGGER = logging.getLogger(__name__)
 
 
 def execute_spider(source_id: int) -> str:
@@ -28,9 +28,8 @@ def get_test_products() -> List:
     with open(root / 'tools/products.csv', 'r') as f:
         rdr = csv.DictReader(f)
         result = [r for r in rdr]
-    logger.debug(f"Got {len(result)} test products")
+    LOGGER.debug(f"Got {len(result)} test products")
     return result
-
 
 
 @celery.task(bind=True)
@@ -51,6 +50,8 @@ def task_execute_spider(self, source_id: int) -> None:
         )
     elif source.name == 'K&L Wines':
         scraper = SpiderScraper(klwines.KLWinesSpider)
+    elif source.name == 'Wine Library':
+        scraper = SpiderScraper(wine_library.WineLibrarySpider)
     else:
         raise ValueError(f'No support for source with name {source.name}')
 
