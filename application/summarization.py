@@ -1,6 +1,5 @@
 import json
 import re
-import spacy
 
 
 CONTAIN_VALUE_REG = re.compile(r'.*[0-9][0-9].*')
@@ -9,7 +8,8 @@ CONTAIN_POINTS_REG = re.compile(r'.*points.*')
 CONTAIN_VALUE_BRACKETS_PLUS_REG = re.compile(r'[0-9][0-9]\(.*\)')
 CONTAIN_VALUE_PLUS_REG = re.compile(r'.*[4-9][0-9][+].*')
 CONTAIN_STRICT_BRACKETS_REG = re.compile(r'\(.*\)')
-SENTENCE_SEPARATOR_REG = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s')
+SENTENCE_SEPARATOR_REG = re.compile(
+    r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s')
 WEIGHT_DIC = dict()
 ATTRIBUTES = ("sku",
               "designation",
