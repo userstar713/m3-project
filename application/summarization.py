@@ -9,7 +9,7 @@ CONTAIN_POINTS_REG = re.compile(r'.*points.*')
 CONTAIN_VALUE_BRACKETS_PLUS_REG = re.compile(r'[0-9][0-9]\(.*\)')
 CONTAIN_VALUE_PLUS_REG = re.compile(r'.*[4-9][0-9][+].*')
 CONTAIN_STRICT_BRACKETS_REG = re.compile(r'\(.*\)')
-NLP = spacy.load('en_core_web_sm')
+SENTENCE_SEPARATOR_REG = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?)\s')
 WEIGHT_DIC = dict()
 ATTRIBUTES = ("sku",
               "designation",
@@ -134,10 +134,10 @@ def adopt(sentences_dic, max_words_len):
 def remove_unnecessary_information(summary):
     final_result = ''
     if not is_valid_summary(summary):
-        doc = NLP(summary)
-        for sent in doc.sents:
-            if is_valid_sentence(sent.text):
-                final_result += sent.text.strip() + ' '
+        sents = SENTENCE_SEPARATOR_REG.split(summary)
+        for sent in sents:
+            if is_valid_sentence(sent):
+                final_result += sent.strip() + ' '
     else:
         final_result = summary
 

@@ -17,8 +17,6 @@ gevent = "*"
 requests = "*"
 celery-redbeat = "*"
 sqlalchemy = "*"
-murmurhash = "==1.0.0"
-spacy = "*"
 
 [dev-packages]
 

@@ -376,6 +376,7 @@ class KLWinesSpider(BaseSpider):
         step = 500
         items_scraped = 0
         for (wine_type, wines_total, wine_filter) in wine_types:
+
             wine_filter = wine_filter.replace('limit=50', f'limit={step}')
             wine_filter = wine_filter.replace('&offset=0', '')
             if wines_total % step or wines_total < step:
