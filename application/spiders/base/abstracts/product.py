@@ -20,7 +20,7 @@ class AbstractParsedProduct(ABC):
             'varietals': self.get_varietals(),
             'region': self.get_region(),
             'alcohol_pct': self.get_alcohol_pct(),
-            'wine_type': r.meta.get('wine_type'),
+            'wine_type': self.get_wine_type(),
             'reviews': self.get_reviews(),
             'bottle_size': self.get_bottle_size(),
             'sku': self.get_sku(),
@@ -28,6 +28,9 @@ class AbstractParsedProduct(ABC):
 
     def get_url(self):
         return self.r.url
+
+    def get_wine_type(self):
+        return r.meta.get('wine_type')
 
     @abstractmethod
     def get_sku(self):

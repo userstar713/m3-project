@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 from scrapy.spiders import Spider
 
+CONCURRENT_REQUESTS = 16
+COOKIES_DEBUG = False
+DOWNLOADER_CLIENTCONTEXTFACTORY = ('application.spiders.base.cipher_factory.'
+                                   'CustomCipherContextFactory')
+
 
 class AbstractSpider(ABC, Spider):
 
@@ -20,7 +25,6 @@ class AbstractSpider(ABC, Spider):
     def is_not_logged(self, response):
         pass
 
-    @abstractmethod
     def get_wine_types(self, response):
         pass
 
@@ -28,7 +32,6 @@ class AbstractSpider(ABC, Spider):
     def get_listpages(self, response):
         pass
 
-    @abstractmethod
     def parse_wine_types(self, response):
         pass
 

@@ -8,16 +8,16 @@ from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
-
-from application.spiders.base.abstracts.spider import AbstractSpider
+from application.logging import logger
+from application.spiders.base.abstracts.spider import (
+    AbstractSpider,
+    CONCURRENT_REQUESTS,
+    COOKIES_DEBUG,
+    DOWNLOADER_CLIENTCONTEXTFACTORY)
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 from application.spiders.base.wine_item import WineItem
 
-CONCURRENT_REQUESTS = 16
-COOKIES_DEBUG = False
-BASE_URL = 'https://winelibrary.com/'
-DOWNLOADER_CLIENTCONTEXTFACTORY = ('application.spiders.base.cipher_factory.'
-                                   'CustomCipherContextFactory')
+BASE_URL = 'https://winelibrary.com'
 
 
 def clean(s):
@@ -26,126 +26,156 @@ def clean(s):
 
 class ParsedProduct(AbstractParsedProduct):
 
-    def get_sku(self) -> str:
-        value = self.r.xpath(
-            '//span[@class="SKUInformation"]/text()'
-        ).extract()[0]
-        value = value.replace('SKU ', '')
-        return value
+    def __init__(self, r: Response) -> None:
+        super().__init__(r)
+        self.result['msrp'] = self.get_msrp()
+        self.result['characteristics'] = self.get_characteristics()
+        self.result['description'] = self.get_description()
 
     def get_name(self) -> str:
-        return clean(self.r.xpath(
-            '//div[@class="result-desc"]/h1/text()'
-        )[0].extract())
+        return self.r.xpath(
+            '//h1[@class="h2 h-sans product-pg-title"]/text()'
+        )[0].extract()
+
+    def get_characteristics(self) -> str:
+        return self.additional['characteristics']
+
+    def get_description(self) -> str:
+        description = self.r.xpath(
+            "//p[@itemprop='description']/text()")
+        return description and description[0].extract()
+
+    def get_sku(self) -> str:
+        return self.additional['sku']
+
+    def get_wine_type(self):
+        return self.additional['wine_type']
+
+    def get_msrp(self) -> float:
+        msrp = self.result['price']
+        msrp_selector = self.r.xpath('//span/span[@class="strike"]/text()')
+        if msrp_selector:
+            msrp = msrp_selector[0].extract()
+            msrp = msrp.replace('$', '')
+            msrp = float(msrp)
+        return msrp
 
     def get_vintage(self) -> str:
-        res = ''
-        match = re.match(r'.*([1-3][0-9]{3})', self.name)
-        if match:
-            res = match.group(1)
-        return res
+        vintage = self.additional['vintage']
+        if not vintage:
+            match = re.match(r'.*([1-3][0-9]{3})', self.name)
+            if match:
+                vintage = match.group(1)
+        return vintage
 
     def get_price(self) -> float:
-        s = clean(self.r.xpath(
-            f'//div[@class="result-info"]/span/span/strong/text()'
-        )[0].extract())
-        s = s.replace('$', '').replace(',', '')
+        price = self.r.xpath(
+            '//span[@itemprop="price"]/text()'
+        )[0].extract()
+        price = price.replace('$', '').replace(',', '')
         try:
-            float_s = float(s)
+            float_price = float(price)
         except ValueError:
             return "ERROR READING PRICE"
         else:
-            return float_s
+            return float_price
 
     def get_image(self) -> str:
-        return self.r.xpath('//img[@class="productImg"]/@src')[
-            0].extract()
+        return self.r.xpath(
+            '//div[@class="product-pg-photo"]/a/'
+            'img[@class="img-full-responsive"]/@src')[0].extract()
 
     def get_additional(self):
         additional = {
             'varietals': [],
-            'alcohol_pct': None,
+            'vintage': None,
             'name_varietal': None,
             'region': None,
-            'description': None,
             'other': None,
+            'sku': None,
+            'wine_type': None,
         }
-        rows = self.r.xpath('//div[@class="addtl-info-block"]/table/tr')
-        detail_xpath_value = 'td[@class="detail_td"]/h3/text()'
-        title_xpath = 'td[@class="detail_td1"]/text()'
+        characteristics = []
+        rows = self.r.xpath('//div[@class="product-detail-tables row"]//tr')
         for row in rows:
-            title = clean(row.xpath(title_xpath).extract()[0])
-            if title == "Alcohol Content (%):":
-                value = clean(row.xpath(
-                    'td[@class="detail_td"]/text()').extract()[0])
-                additional['alcohol_pct'] = value
-            else:
-                values = row.xpath(detail_xpath_value).extract()
-                value = values and values[0].replace(" and ", " ")
-                if title == "Varietal:":
-                    description = clean(
-                        row.xpath(
-                            'td[@class="detail_td"]/text()').extract()[1])
-                    additional['description'] = description
-
-                    additional['name_varietal'] = value
-                    if value:
-                        additional['varietals'].append(value)
-                elif title in ("Country:",
-                               "Sub-Region:",
-                               "Specific Appellation:"):
-                    additional['region'] = value
+            detail_name = row.xpath(
+                'td[@class="label"]/text()').extract()[0]
+            value_selector = row.xpath(
+                'td[@class="data"]')
+            detail_value = row.xpath(
+                'td[@class="data"]/text()').extract()
+            detail_value = detail_value and detail_value[0]
+            if '#' in detail_name:
+                additional['sku'] = detail_value
+            elif detail_name in ('Country',
+                                 'Region',
+                                 'Sub-Region'):
+                detail_value = value_selector.xpath('a/text()').extract()
+                additional['region'] = detail_value and detail_value[0]
+            elif detail_name == 'Ratings':
+                pass
+            elif detail_name == 'Vintage':
+                detail_value = value_selector.xpath('a/text()').extract()
+                if detail_value:
+                    additional['vintage'] = detail_value[0]
+            elif detail_name == 'Color':
+                detail_value = value_selector.xpath('a/text()').extract()
+                if detail_value and detail_value[0] in ('White', 'Red', 'Rose'):
+                    additional['wine_type'] = detail_value[0]
+            elif detail_name == 'ABV':
+                additional['alcohol_pct'] = detail_value.replace('%', '')
+            elif detail_name == 'Varietal(s)':
+                additional['varietals'] = value_selector.xpath(
+                    'a/text()').extract()
+            elif detail_name == 'Size':
+                detail_value = int(detail_value.replace(' mL', ''))
+                additional['bottle_size'] = detail_value
+            elif detail_name == 'Closure':
+                pass
+            elif detail_name == 'Features':
+                if detail_value in ('Dessert', 'Sparkling'):
+                    additional['wine_type'] = detail_value
+            elif detail_name in ('Taste', 'Nose'):
+                detail_value = row.xpath(
+                    'td[@class="data"]/text()').extract()
+                if detail_value:
+                    characteristic = clean(detail_value[0])
+                    characteristics.append(characteristic)
+        additional['characteristics'] = ', '.join(characteristics)
         return additional
 
     def get_bottle_size(self) -> int:
-        bottle_size = 750
-        if "187 ml" in self.name:
-            bottle_size = 187
-        elif "375 ml" in self.name:
-            bottle_size = 375
-        elif "1.5 l" in self.name:
-            bottle_size = 1500
-        elif "3.0 l" in self.name:
-            bottle_size = 3000
-        return bottle_size
+        return self.additional['bottle_size']
 
     def get_reviews(self) -> list:
         reviews = []
-        reviewer_point = self.r.xpath(
-            '//div[@class="result-desc"]/span[@class="H2ReviewNotes"]'
-        )
-        texts = self.r.xpath(
-            '//div[@class="result-desc"]/p'
-        )
-        for rp, text in zip(reviewer_point, texts):
-            reviewer_name = clean(
-                ''.join(rp.xpath('text()').extract())
-            )
-            content = clean(''.join(text.xpath('text()').extract()))
-
-            if 'K&L' in reviewer_name:
-                reviews.append({
-                    'reviewer_name': 'K&LNotes',
-                    'score_num': None,
-                    'score_str': None,
-                    'content': content
-                })
+        review_rows = self.r.xpath('//div[@itemprop="review"]/p')
+        for i, row in enumerate(review_rows):
+            score = row.xpath('b/span[@itemprop="reviewRating"]')
+            if score:
+                score_str = score.xpath(
+                    'span[@itemprop="ratingValue"]/text()').extract()[0]
+                reviewer_name = row.xpath(
+                    '//span[@itemprop="name"]/text()').extract()[0]
             else:
-                raw_points = rp.xpath('span/text()')
-                if raw_points:
-                    score = clean(
-                        raw_points[0].extract()
-                    ).replace('points', '').strip()
-                    if '-' in score:
-                        score = score.split('-')[-1]
-                else:
-                    score = None
-                reviews.append({
-                    'reviewer_name': reviewer_name,
-                    'score_num': score and int(score),
-                    'score_str': score,
-                    'content': content
-                })
+                score = row.xpath('b/text()').extract()
+                if score:
+                    score = clean(score[0])
+                    scoring = score.split(' ')
+                    score_str = scoring[0]
+                    reviewer_name = score.replace(f'{score_str} ', '')
+            if not score:
+                continue
+            content = clean(
+                review_rows[i + 1].xpath('text()').extract()[0])
+            if score_str:
+                score_str = ''.join(score_str.split('-')[-1])
+                score_str = score_str.replace('+', '')
+            reviews.append({'reviewer_name': reviewer_name,
+                            'score_num': score_str and int(score_str),
+                            'score_str': score_str,
+                            'content': content,
+                            })
         return reviews
 
     def get_qoh(self) -> int:
@@ -163,82 +193,54 @@ class WineLibrarySpider(AbstractSpider):
     """'Spider' which is getting data from winelibrary.com"""
 
     name = 'wine_library'
-    LOGIN = "winetron@protonmail.com"
-    PASSWORD = "ilovewine1A"
+    LOGIN = "wine_shoper@protonmail.com"
+    PASSWORD = "ilovewine1B"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
-            BASE_URL,
-            callback=self.before_login
-        )
-
-    def before_login(self, _: Response) -> Iterator[Dict]:
-        yield Request(
-            f'{BASE_URL}/account/login',
+            f'{BASE_URL}/sign_in',
             callback=self.login
         )
 
+    def before_login(self):
+        pass
+
     def login(self, response: Response) -> Iterator[Dict]:
         token_path = response.xpath(
-            '//div[contains(@class,"login-block")]'
-            '//input[@name="__RequestVerificationToken"]/@value')
+            '//form[@id="sessionform"]'
+            '//input[@name="authenticity_token"]/@value')
         token = token_path[0].extract()
         return FormRequest.from_response(
             response,
-            formxpath='//*[contains(@action,"login")]',
-            formdata={'Email': self.LOGIN,
-                      'Password': self.PASSWORD,
-                      '__RequestVerificationToken': token,
-                      'Login.x': "24",
-                      'Login.y': "7"},
+            formxpath='//form[@id="sessionform"]',
+            formdata={'user_wine_library_detail[email]': self.LOGIN,
+                      'user_wine_library_detail[password]': self.PASSWORD,
+                      'user_wine_library_detail[remember_me]': '0',
+                      'authenticity_token': token,
+                      },
             callback=self.parse_wine_types
         )
 
     def is_not_logged(self, response):
-        return "Welcome, John" not in response.body.decode('utf-8')
-
-    def get_wine_types(self, response: Response) -> list:
-        res = []
-        rows = response.xpath(
-            '//ul[@id="category-menu-container-ProductType"]/li/a')[::-1]
-        for row in rows:
-            wine_filter = row.xpath('@href').extract()[0]
-            wine_type = row.xpath('@title').extract()[0]
-            wine_type = wine_type.replace('Wine - ', '').lower()
-            wines_total = row.xpath('span[2]/text()').extract()[0]
-            wines_total = int(wines_total[1:-1])
-            if 'misc' in wine_type:
-                continue
-            res.append((wine_type, wines_total, wine_filter))
-        return res
+        return "My Account" not in response.body.decode('utf-8')
 
     def get_listpages(self, response: Response) -> Iterator[Dict]:
-        wine_types = self.get_wine_types(response)
-        step = 500
-        items_scraped = 0
-        for (wine_type, wines_total, wine_filter) in wine_types:
-            wine_filter = wine_filter.replace('limit=50', f'limit={step}')
-            wine_filter = wine_filter.replace('&offset=0', '')
-            if wines_total % step or wines_total < step:
-                wines_total += step
-
-            for offset in range(0, wines_total, step):
-
-                items_scraped += offset
-                url = f'{wine_filter}&offset={offset}'
-                offset += step
-                yield Request(
-                    f'{BASE_URL}{url}',
-                    meta={'wine_type': wine_type},
-                    callback=self.parse_listpage,
-                )
+        total_pages_link = response.xpath(
+            '//li[@class="page-num last"]/a/@href').extract()[0]
+        wine_filter = '/search?lpass=1&page='
+        total_pages = int(total_pages_link.replace(
+            wine_filter, ''))
+        for page_num in range(1, total_pages + 1):
+            yield Request(
+                f'{BASE_URL}{wine_filter}{page_num}',
+                callback=self.parse_listpage,
+            )
 
     def parse_wine_types(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):
-            self.logger.exception("Login failed")
             yield
         else:
-            wines_url = f'{BASE_URL}/Wines'
+            wines_url = f'{BASE_URL}/search?lpass=1'
             yield Request(wines_url,
                           callback=self.get_listpages)
 
@@ -248,36 +250,22 @@ class WineLibrarySpider(AbstractSpider):
         :return: iterator for data
         """
         if self.is_not_logged(response):
-            self.logger.exception("Login failed")
+            logger.exception("Login failed")
             yield
         else:
-            selector = "//div[contains(concat(' ', @class, ' '), ' result ')]"
+            selector = '//h5[@class="h-sm search-item-title"]/a/@href'
             rows = response.xpath(selector)
-            links = []
-            for row in rows:
-                if row:
-                    if 'auctionResult-desc' not in row.extract():
-                        link = row.xpath(
-                            'div[@class="result-desc"]/a/@href'
-                        ).extract_first()
-                        if link:
-                            links.append(link)
-                        else:
-                            logging.exception(
-                                f'Link not fount for {row} '
-                                f'on page: {response.url}'
-                            )
+            links = [row.extract() for row in rows]
             for link in links:
                 absolute_url = BASE_URL + link
                 yield Request(
                     absolute_url,
                     callback=self.parse_product,
-                    meta={'wine_type': response.meta.get('wine_type')},
                     priority=1)
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):
-            self.logger.exception("Login failed")
+            logger.exception("Login failed")
             return None
         return WineItem(**ParsedProduct(response).as_dict())
 

@@ -8,16 +8,16 @@ from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
-from application.spiders.base.abstracts.spider import AbstractSpider
+from application.spiders.base.abstracts.spider import (
+    AbstractSpider,
+    CONCURRENT_REQUESTS,
+    COOKIES_DEBUG,
+    DOWNLOADER_CLIENTCONTEXTFACTORY)
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 from application.spiders.base.wine_item import WineItem
 
 
-CONCURRENT_REQUESTS = 16
-COOKIES_DEBUG = False
 BASE_URL = 'https://www.klwines.com'
-DOWNLOADER_CLIENTCONTEXTFACTORY = ('application.spiders.base.cipher_factory.'
-                                   'CustomCipherContextFactory')
 
 
 def clean(s):
