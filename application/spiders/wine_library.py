@@ -162,6 +162,7 @@ class ParsedProduct(AbstractParsedProduct):
         review_rows = self.r.xpath('//div[@itemprop="review"]/p')
         for i, row in enumerate(review_rows):
             score = row.xpath('b/span[@itemprop="reviewRating"]')
+            score_str = ''
             if score:
                 score_str = score.xpath(
                     'span[@itemprop="ratingValue"]/text()').extract()[0]
@@ -174,7 +175,7 @@ class ParsedProduct(AbstractParsedProduct):
                     scoring = score.split(' ')
                     score_str = scoring[0].isdigit() and scoring[0]
                     reviewer_name = score.replace(f'{score_str} ', '')
-            if not score:
+            if not score_str:
                 continue
             content = review_rows[i + 1].xpath('text()').extract() or ''
             if content:
