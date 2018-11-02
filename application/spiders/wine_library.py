@@ -57,6 +57,7 @@ class ParsedProduct(AbstractParsedProduct):
         if msrp_selector:
             msrp = msrp_selector[0].extract()
             msrp = msrp.replace('$', '')
+            msrp = msrp.replace(',', '')
             msrp = float(msrp)
         return msrp
 
@@ -105,21 +106,25 @@ class ParsedProduct(AbstractParsedProduct):
             detail_value = row.xpath(
                 'td[@class="data"]/text()').extract()
             detail_value = detail_value and detail_value[0]
+            a_value = value_selector.xpath('a/text()').extract()
+            if detail_value == 'N/A':
+                continue
+
             if '#' in detail_name:
                 additional['sku'] = detail_value
             elif detail_name in ('Country',
                                  'Region',
                                  'Sub-Region'):
-                detail_value = value_selector.xpath('a/text()').extract()
+                detail_value = a_value
                 additional['region'] = detail_value and detail_value[0]
             elif detail_name == 'Ratings':
                 pass
             elif detail_name == 'Vintage':
-                detail_value = value_selector.xpath('a/text()').extract()
+                detail_value = a_value
                 if detail_value:
                     additional['vintage'] = detail_value[0]
             elif detail_name == 'Color':
-                detail_value = value_selector.xpath('a/text()').extract()
+                detail_value = a_value
                 if detail_value and detail_value[0] in ('White', 'Red', 'Rose'):
                     additional['wine_type'] = detail_value[0]
             elif detail_name == 'ABV':
@@ -128,7 +133,14 @@ class ParsedProduct(AbstractParsedProduct):
                 additional['varietals'] = value_selector.xpath(
                     'a/text()').extract()
             elif detail_name == 'Size':
-                detail_value = int(detail_value.replace(' mL', ''))
+                detail_value = detail_value.replace(' mL', '')
+                detail_value = detail_value.replace('l', '')
+                if '.' in detail_value:
+                    detail_value = float(detail_value) * 100
+                else:
+                    detail_value = int(detail_value)
+                if detail_value and detail_value < 10:
+                    detail_value *= 1000
                 additional['bottle_size'] = detail_value
             elif detail_name == 'Closure':
                 pass
@@ -136,10 +148,8 @@ class ParsedProduct(AbstractParsedProduct):
                 if detail_value in ('Dessert', 'Sparkling'):
                     additional['wine_type'] = detail_value
             elif detail_name in ('Taste', 'Nose'):
-                detail_value = row.xpath(
-                    'td[@class="data"]/text()').extract()
                 if detail_value:
-                    characteristic = clean(detail_value[0])
+                    characteristic = clean(detail_value)
                     characteristics.append(characteristic)
         additional['characteristics'] = ', '.join(characteristics)
         return additional
@@ -162,17 +172,18 @@ class ParsedProduct(AbstractParsedProduct):
                 if score:
                     score = clean(score[0])
                     scoring = score.split(' ')
-                    score_str = scoring[0]
+                    score_str = scoring[0].isdigit() and scoring[0]
                     reviewer_name = score.replace(f'{score_str} ', '')
             if not score:
                 continue
-            content = clean(
-                review_rows[i + 1].xpath('text()').extract()[0])
+            content = review_rows[i + 1].xpath('text()').extract() or ''
+            if content:
+                content = clean(content[0])
             if score_str:
                 score_str = ''.join(score_str.split('-')[-1])
                 score_str = score_str.replace('+', '')
             reviews.append({'reviewer_name': reviewer_name,
-                            'score_num': score_str and int(score_str),
+                            'score_num': score_str and int(score_str) or None,
                             'score_str': score_str,
                             'content': content,
                             })

@@ -53,16 +53,16 @@ class AbstractParsedProduct(ABC):
         pass
 
     def get_varietals(self) -> list:
-        return self.additional['varietals']
+        return self.additional.get('varietals', [])
 
     def get_region(self) -> str:
-        return self.additional['region']
+        return self.additional.get('region')
 
     def get_alcohol_pct(self) -> str:
-        return self.additional['alcohol_pct']
+        return self.additional.get('alcohol_pct', 0)
 
     def get_description(self) -> str:
-        return self.additional['description']
+        return self.additional.get('description', '')
 
     @abstractmethod
     def get_additional(self):

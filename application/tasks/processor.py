@@ -1,7 +1,9 @@
 import json
 import re
-from funcy import log_durations
 from datetime import datetime
+from typing import NamedTuple
+from funcy import log_durations
+from sqlalchemy.sql.expression import func
 from application.caching import cache
 from application.db_extension.models import (db,
                                              DomainAttribute,
@@ -13,14 +15,11 @@ from application.db_extension.models import (db,
                                              source_location,
                                              source_location_product,
                                              SourceLocationProductProxy)
-from application.db_extension.models import db
-from typing import NamedTuple
 from application.db_extension.routines import (
     get_default_category_id,
     attribute_lookup)
 from application.utils import listify, get_float_number
 from application.logging import logger
-from sqlalchemy.sql.expression import func
 
 from .helpers import DATATYPES, remove_diacritics
 
@@ -30,11 +29,13 @@ def filter_brands(attributes: list) -> list:
     """
     return [a for a in attributes if a['code'] == 'brand']
 
+
 def get_brand(name: str) -> str:
     unaccented_name = remove_diacritics(name)
     brands = get_brands(unaccented_name)
     brand = brands and brands[0]['value'] or None
     return brand
+
 
 def get_brands(unaccented_name: str) -> list:
     # processed = cleanup_string(name, check_synonyms=False)
@@ -44,12 +45,15 @@ def get_brands(unaccented_name: str) -> list:
     # attr_codes = ['vintage','brand','region','quality_level','varietals','wine_type','styles','bottle_size','is_blend','sweetness']
     # attr_codes = get_process_product_attributes()
 
-    attributes = attribute_lookup(sentence=unaccented_name, brand_treatment='include')
+    attributes = attribute_lookup(
+        sentence=unaccented_name, brand_treatment='include')
     brands = filter_brands(attributes)
     if len(brands) > 1:  # what to do if more than one brand returned?
-        logger.warning("prepare_process_product returns more than one brand! using first")
+        logger.warning(
+            "prepare_process_product returns more than one brand! using first")
         brands = sorted(brands, key=lambda x: x.get('start', 999) or 999)
     return brands
+
 
 @cache.memoize()
 def get_nlp_ngrams():
@@ -125,14 +129,14 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
     # We only care about node_id
     # node_id = 12345;
     # return node_id;
-    attr_result = attribute_lookup(sentence=attribute_value, brand_treatment='include')
+    attr_result = attribute_lookup(
+        sentence=attribute_value, brand_treatment='include')
     if attr_result:
         result = attr_result[0]['node_id']
     else:
         result = -1
     # logger.debug("*** NODE ID: {}-{}-{} {} ".format(category_id, attribute_code, attribute_value, result))
     return result
-
 
 
 class DomainReviewers:
@@ -152,7 +156,7 @@ class DomainReviewers:
     def get_id_by_name_or_alias(self, name_or_alias):
         for item in self.data:
             if item['name'] == name_or_alias or name_or_alias in item[
-                'aliases']:
+                    'aliases']:
                 return item['id']
         return None
 
@@ -474,13 +478,16 @@ class ProductProcessor:
         self.product = product
         self.create_master_and_source()
 
-
-        location_id = db.session.query(
+        location_ids = db.session.query(
             source_location.SourceLocation.id
         ).filter_by(
             source_id=product.source_id
-        ).first()[0]
-
+        ).first()
+        if not location_ids:
+            logger.error(
+                f'No location found for source_id={product.source_id}')
+            raise
+        location_id = location_ids[0]
         price = get_float_number(product.price)
         if not price or price < 1:
             logger.error(
@@ -529,16 +536,14 @@ class ProductProcessor:
             # `sav` is a `source attribute value`
             assert self.source_product_id
             savs = self.generate_sav_list(value=value,
-                                              da_id=da[
-                                                  'id'],
-                                              da_code=da_code,
-                                              datatype=datatype,
-                                              value_key=
-                                              DATATYPES[
-                                                  datatype])
+                                          da_id=da[
+                                              'id'],
+                                          da_code=da_code,
+                                          datatype=datatype,
+                                          value_key=DATATYPES[
+                                              datatype])
             if savs:
                 sav_list += savs
-
 
             brand_id = value if da_code == 'brand' else None
         self.process_master_product()
