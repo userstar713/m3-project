@@ -1,3 +1,4 @@
+import io
 import json
 
 from tempfile import NamedTemporaryFile
@@ -5,7 +6,9 @@ from typing import List
 from scrapy.crawler import CrawlerRunner
 
 from twisted.internet import reactor
-from application.config import SCRAPER_PRODUCTS_LIMIT
+from application.config import (SCRAPER_PAGES_LIMIT,
+                                PROXY_URL,
+                                )
 from application.spiders.base.abstracts.spider import (
     CONCURRENT_REQUESTS,
     COOKIES_DEBUG,
@@ -13,7 +16,7 @@ from application.spiders.base.abstracts.spider import (
 from .base import BaseScraper
 
 
-def run_spider(spider_cls, tmp_file):
+def get_spider_settings(tmp_file: io.IOBase) -> dict:
     settings = {
         'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': COOKIES_DEBUG,
@@ -21,14 +24,28 @@ def run_spider(spider_cls, tmp_file):
         'FEED_URI': f'file://{tmp_file.name}',
         'DOWNLOADER_CLIENT_METHOD': 'TLSv1.2',
         'DOWNLOADER_CLIENTCONTEXTFACTORY': DOWNLOADER_CLIENTCONTEXTFACTORY,
-        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36'
-
+        'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
+        'CLOSESPIDER_PAGECOUNT': SCRAPER_PAGES_LIMIT,
     }
-    if SCRAPER_PRODUCTS_LIMIT:
-        settings['CLOSESPIDER_PAGECOUNT'] = SCRAPER_PRODUCTS_LIMIT  # TODO for testing purposes, remove this on production
+    if PROXY_URL:
+        settings.update({
+            'DOWNLOADER_MIDDLEWARES': {
+                'scrapy.downloadermiddlewares.retry.RetryMiddleware': 90,
+                'scrapy_proxies.RandomProxy': 100,
+                'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
+            },
+            'RETRY_TIMES': 10,
+            'RETRY_HTTP_CODES': [500, 503, 504, 400, 403, 404, 408],
+            'PROXY_MODE': 2,
+            'CUSTOM_PROXY': PROXY_URL,
+        })
+    return settings
+
+def run_spider(spider_cls, tmp_file):
+    settings = get_spider_settings(tmp_file)
     runner = CrawlerRunner(settings)
-    d = runner.crawl(spider_cls)
-    d.addBoth(lambda _: reactor.stop())
+    deferred = runner.crawl(spider_cls)
+    deferred.addBoth(lambda _: reactor.stop())
     reactor.run()
 
 

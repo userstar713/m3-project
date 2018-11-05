@@ -17,6 +17,7 @@ gevent = "*"
 requests = "*"
 celery-redbeat = "*"
 sqlalchemy = "*"
+scrapy-proxies = "*"
 
 [dev-packages]
 
