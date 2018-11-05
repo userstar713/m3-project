@@ -9,11 +9,8 @@ from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
 from application.logging import logger
-from application.spiders.base.abstracts.spider import (
-    AbstractSpider,
-    CONCURRENT_REQUESTS,
-    COOKIES_DEBUG,
-    DOWNLOADER_CLIENTCONTEXTFACTORY)
+from application.scrapers.spider_scraper import get_spider_settings
+from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 from application.spiders.base.wine_item import WineItem
 
@@ -283,17 +280,15 @@ class WineLibrarySpider(AbstractSpider):
 
 
 def get_data(tmp_file: IO) -> None:
-    process = CrawlerProcess({
-        'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
-        'COOKIES_DEBUG': COOKIES_DEBUG,
-        'FEED_FORMAT': 'jsonlines',
-        'FEED_URI': f'file://{tmp_file.name}',
-        'DOWNLOADER_CLIENT_METHOD': 'TLSv1.2',
-        'DOWNLOADER_CLIENTCONTEXTFACTORY': DOWNLOADER_CLIENTCONTEXTFACTORY,
-        'USER_AGENT': ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) '
-                       'AppleWebKit/537.36 (KHTML, like Gecko) '
-                       'Chrome/69.0.3497.100 Safari/537.36')
-    })
-
+    settings = get_spider_settings(tmp_file)
+    process = CrawlerProcess(settings)
     process.crawl(WineLibrarySpider)
     process.start()
+
+
+if __name__ == '__main__':
+    import os
+    current_path = os.getcwd()
+    file_name = os.path.join(current_path, 'winelibrary.txt')
+    with open(file_name, 'w') as out_file:
+        get_data(out_file)
