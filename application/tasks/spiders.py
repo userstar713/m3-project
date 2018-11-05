@@ -52,6 +52,8 @@ def task_execute_spider(self, source_id: int) -> None:
         scraper = SpiderScraper(klwines.KLWinesSpider)
     elif source.name == 'Wine Library':
         scraper = SpiderScraper(wine_library.WineLibrarySpider)
+    elif source.name == 'wine.com':
+        scraper = SpiderScraper(wine_com.WineComSpider)
     else:
         raise ValueError(f'No support for source with name {source.name}')
 

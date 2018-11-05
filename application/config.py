@@ -14,7 +14,7 @@ CACHE_TYPE = getenv('CACHE_TYPE',
 #
 # Redis settings (Flask-Caching)
 #
-REDIS_HOST = getenv('REDIS_HOST', 'redis://redis:6579')
+REDIS_HOST = getenv('REDIS_HOST', 'redis://redis:6379')
 assert REDIS_HOST.startswith('redis://')
 REDIS_DB = int(getenv('REDIS_DB', 1))
 
@@ -39,4 +39,4 @@ CELERY_RESULT_BACKEND = getenv('CELERY_RESULT_BACKEND', REDIS_URI)
 
 CELERY_EAGER = getenv('CELERY_EAGER', 0)
 SCRAPER_PAGES_LIMIT = int(getenv('SCRAPER_PAGES_LIMIT', 0))
-PROXY_URL = ''  # http://username:password@host2:port
+PROXY_URL = 'http://lum-customer-hl_8f827fe3-zone-static:z0k6lu06vhcw@zproxy.lum-superproxy.io:22225'
