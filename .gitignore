@@ -3,6 +3,5 @@ dev_data/
 *.pyc
 *.swp
 *.orig
-*.winelibrary.txt
 application/spiders/winelibrary.txt
 application/spiders/klwines.txt
