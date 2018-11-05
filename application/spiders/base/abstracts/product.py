@@ -30,7 +30,7 @@ class AbstractParsedProduct(ABC):
         return self.r.url
 
     def get_wine_type(self):
-        return r.meta.get('wine_type')
+        return self.r.meta.get('wine_type')
 
     @abstractmethod
     def get_sku(self):
