@@ -56,10 +56,20 @@ def get_products_task(_, source_id: int) -> List[dict]:
     # return list(chunkify(prepare_products(source_id, products), 500))
     return prepare_products(source_id, products)
 
+
+def queue_sequence(source_id: int):
+    """Set the state of the related row in pipeline_sequence to 'queued'."""
+    sequence = db.session.query(PipelineSequence).filter(
+        PipelineSequence.source_id == source_id
+    ).first()
+    sequence.state = 'queued'
+    db.session.commit()
+
+
 def start_synchronization(source_id: int) -> str:
     from .spiders import task_execute_spider
     logger.info(f'Starting synchronization for source: {source_id}')
-
+    queue_sequence(source_id)
     # if "is_use_interim" is not set, run a full sequence (with scraping)
     # if it is set, don't run the scraper, use the data from
     job = task_execute_spider.si(source_id)\

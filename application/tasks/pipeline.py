@@ -11,6 +11,7 @@ from application.db_extension.models import db
 from application.db_extension.models import PipelineSequence
 from .information_extraction import PipelineExtractor
 
+QUEUED = "queued"
 EXECUTING = "executing"
 AGGREGATING = 'aggregating'
 READY = "ready"
