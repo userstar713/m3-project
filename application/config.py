@@ -39,4 +39,5 @@ CELERY_RESULT_BACKEND = getenv('CELERY_RESULT_BACKEND', REDIS_URI)
 
 CELERY_EAGER = getenv('CELERY_EAGER', 0)
 SCRAPER_PAGES_LIMIT = int(getenv('SCRAPER_PAGES_LIMIT', 0))
-PROXY_URL = 'http://lum-customer-hl_8f827fe3-zone-static:z0k6lu06vhcw@zproxy.lum-superproxy.io:22225'
+PROXY_URL = ''
+# PROXY_URL = 'http://lum-customer-hl_2a4458fe-zone-static:zidoxuxldfjn@zproxy.lum-superproxy.io:22225'

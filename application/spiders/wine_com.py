@@ -14,7 +14,7 @@ from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 from application.spiders.base.wine_item import WineItem
 
-BASE_URL = 'https://wine.com'
+BASE_URL = 'https://www.wine.com'
 
 
 def clean(s):
@@ -199,7 +199,7 @@ class ParsedProduct(AbstractParsedProduct):
 
 
 class WineComSpider(AbstractSpider):
-    """'Spider' which is getting data from winelibrary.com"""
+    """'Spider' which is getting data from wine.com"""
 
     name = 'wine_com'
     LOGIN = "wine_shoper@protonmail.com"
@@ -211,44 +211,87 @@ class WineComSpider(AbstractSpider):
             callback=self.login
         )
 
-    def before_login(self):
+    def before_login(self, response: Response):
         pass
 
     def login(self, response: Response) -> Iterator[Dict]:
+        # from scrapy.utils.response import open_in_browser
+        # open_in_browser(response)
+        # from scrapy.shell import inspect_response
+        # inspect_response(response, self)
         csrf_token = response.xpath(
             '//meta[@name="csrf"]/@content')
-        token = csrf_token[0].extract()
-        return FormRequest.from_response(
-            response,
-            formxpath='//form[contains(@class, "signinForm")]',
-            formdata={'user_wine_library_detail[email]': self.LOGIN,
-                      'user_wine_library_detail[password]': self.PASSWORD,
-                      'user_wine_library_detail[remember_me]': '0',
-                      'authenticity_token': token,
+        token = csrf_token.extract_first()
+        headers = {
+                    # 'x-requested-with': 'XMLHttpRequest',
+                   'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
+                   # 'content-type': 'application/json',
+                   # 'content-length': '122',
+                   # 'accept': 'application/json, text/javascript, */*; q=0.01',
+                   # 'accept-encoding': 'gzip, deflate, br',
+                   # 'accept-language': 'en-US,en;q=0.9',
+                   # 'origin': 'https://www.wine.com',
+                   # 'referer': 'https://www.wine.com/auth/signin'
+        }
+        yield FormRequest(
+            f'{BASE_URL}/api/userProfile/credentials/?csrf={token}',
+            formdata={'login': self.LOGIN,
+                      'password': self.PASSWORD,
+                      'email': '',
+                      'hashCode': '',
+                      'prospectId': '0',
+                      'rememberMe': 'false',
                       },
+            headers=headers,
+            meta={'csrf': token},
             callback=self.parse_wine_types
         )
 
     def is_not_logged(self, response):
-        return "My Account" not in response.body.decode('utf-8')
+        return "Welcome" not in response.body.decode('utf-8')  # TODO Check if John is logged
+
+    def get_wine_types(self, response: Response) -> list:
+        res = []
+        varietal_div = response.xpath(
+            "//div[contains(concat(' ', @class, ' '), ' varietal ')]")
+        rows = varietal_div.xpath('div/ul[@class="filterMenu_list"]/li')
+        for row in rows:
+            wine_filter = row.xpath(
+                'a[@class="filterMenu_itemLink"]/@href').extract_first()
+            wine_type = row.xpath(
+                'a/span[@class="filterMenu_itemName"]/text()'
+            ).extract_first()
+            wines_total = row.xpath(
+                'a/span[@class="filterMenu_itemCount"]/text()'
+            ).extract_first()
+            wines_total = int(wines_total)
+            if 'Saké' in wine_type:
+                continue
+            res.append((wine_type, wines_total, wine_filter))
+        return res
 
     def get_listpages(self, response: Response) -> Iterator[Dict]:
-        total_pages_link = response.xpath(
-            '//li[@class="page-num last"]/a/@href').extract()[0]
-        wine_filter = '/search?lpass=1&page='
-        total_pages = int(total_pages_link.replace(
-            wine_filter, ''))
-        for page_num in range(1, total_pages + 1):
-            yield Request(
-                f'{BASE_URL}{wine_filter}{page_num}',
-                callback=self.parse_listpage,
-            )
+        wine_types = self.get_wine_types(response)
+        step = 25
+        items_scraped = 0
+        for (wine_type, wines_total, wine_filter) in wine_types:
+            url = wine_filter
+            if wines_total % step or wines_total < step:
+                wines_total += step
+
+            if items_scraped <= wines_total:
+                yield Request(
+                    f'{BASE_URL}{url}',
+                    callback=self.parse_listpage,
+                    meta={'wine_type': wine_type},
+                )
+            items_scraped += step
 
     def parse_wine_types(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):
             yield
         else:
-            wines_url = f'{BASE_URL}/search?lpass=1'
+            wines_url = f'{BASE_URL}/list/wine/7155'
             yield Request(wines_url,
                           callback=self.get_listpages)
 
@@ -257,19 +300,17 @@ class WineComSpider(AbstractSpider):
         :param response: response from ScraPy
         :return: iterator for data
         """
-        if self.is_not_logged(response):
-            logger.exception("Login failed")
-            yield
-        else:
-            selector = '//h5[@class="h-sm search-item-title"]/a/@href'
-            rows = response.xpath(selector)
-            links = [row.extract() for row in rows]
-            for link in links:
-                absolute_url = BASE_URL + link
-                yield Request(
-                    absolute_url,
-                    callback=self.parse_product,
-                    priority=1)
+        import json
+        data = json.loads(response.text)
+        selector = '//h5[@class="h-sm search-item-title"]/a/@href'
+        rows = response.xpath(selector)
+        links = [row.extract() for row in rows]
+        for link in links:
+            absolute_url = BASE_URL + link
+            yield Request(
+                absolute_url,
+                callback=self.parse_product,
+                priority=1)
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):
