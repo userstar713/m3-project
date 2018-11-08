@@ -5,8 +5,9 @@ import logging
 from typing import List
 from flask import current_app
 from application.tasks.synchronization import celery
-from application.spiders import klwines
-from application.spiders import wine_library
+from application.spiders import (klwines,
+                                 wine_com,
+                                 wine_library)
 from application.db_extension.models import db, Source
 from application.caching import cache
 
@@ -52,6 +53,8 @@ def task_execute_spider(self, source_id: int) -> None:
         scraper = SpiderScraper(klwines.KLWinesSpider)
     elif source.name == 'Wine Library':
         scraper = SpiderScraper(wine_library.WineLibrarySpider)
+    elif source.name == 'Wine.com':
+        scraper = SpiderScraper(wine_com.WineComSpider)
     else:
         raise ValueError(f'No support for source with name {source.name}')
 

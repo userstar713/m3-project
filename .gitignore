@@ -5,3 +5,4 @@ dev_data/
 *.orig
 application/spiders/winelibrary.txt
 application/spiders/klwines.txt
+application/spiders/wine_com.txt
