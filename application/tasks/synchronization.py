@@ -62,8 +62,9 @@ def queue_sequence(source_id: int):
     sequence = db.session.query(PipelineSequence).filter(
         PipelineSequence.source_id == source_id
     ).first()
-    sequence.state = 'queued'
-    db.session.commit()
+    if sequence:
+        sequence.state = 'queued'
+        db.session.commit()
 
 
 def start_synchronization(source_id: int) -> str:
