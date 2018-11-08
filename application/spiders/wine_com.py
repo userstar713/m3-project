@@ -220,6 +220,9 @@ class WineComSpider(AbstractSpider):
             wine_type = row.xpath(
                 'a/span[@class="filterMenu_itemName"]/text()'
             ).extract_first()
+            wine_type = wine_type.replace('Champagne & ', '')
+            wine_type = wine_type.replace('Rosé', 'Rose')
+            wine_type = wine_type.replace(', Sherry & Port', '')
             wines_total = row.xpath(
                 'a/span[@class="filterMenu_itemCount"]/text()'
             ).extract_first()
@@ -233,7 +236,6 @@ class WineComSpider(AbstractSpider):
         wine_types = self.get_wine_types(response)
         step = 25
         items_scraped = 0
-        page_num = 1
         for (wine_type, wines_total, wine_filter) in wine_types:
             url = wine_filter
             if wines_total % step or wines_total < step:
