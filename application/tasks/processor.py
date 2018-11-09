@@ -340,6 +340,7 @@ class ProductProcessor:
                                     nlps['target_text'], cleaned_string)
         return cleaned_string
 
+    @log_durations(logger.info, unit='ms')
     def generate_review(self, data):
         domain_reviewer_id = drc.get_id_by_name_or_alias(
             name_or_alias=data.get('reviewer_name', 'Unknown')
@@ -366,6 +367,7 @@ class ProductProcessor:
             'source_id': self.product.source_id,
         }
 
+    @log_durations(logger.info, unit='ms')
     def generate_sav_list(self,
                           value,
                           da_id,
@@ -411,6 +413,7 @@ class ProductProcessor:
             result.append(res)
         return result
 
+    @log_durations(logger.info, unit='ms')
     def create_master_and_source(self):
         master_product, _ = MasterProductProxy.get_or_create(
             name=self.product.name,
@@ -428,6 +431,7 @@ class ProductProcessor:
         db.session.commit()
         self.source_product_id = source_product.id
 
+    @log_durations(logger.info, unit='ms')
     def prepare_process_product(self, name: str) -> dict:
         """
         Cleanup product name, look for brand and non attribute words
@@ -447,6 +451,7 @@ class ProductProcessor:
             'extra_words': []
         }
 
+    @log_durations(logger.info, unit='ms')
     def process_master_product(self) -> dict:
         prepared = self.prepare_process_product(self.product.name)
         upd_data = {
@@ -559,6 +564,7 @@ class ProductProcessor:
             self.review_bulk_adder.add(review)
         return self.master_product_id
 
+    @log_durations(logger.info, unit='ms')
     def clean_source_tables(self, product_id: int) -> None:
         db.session.query(
             SourceAttributeValue
