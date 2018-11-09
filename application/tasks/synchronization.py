@@ -26,9 +26,10 @@ def process_product_list_task(_, chunk: List[dict]) -> None:
     """
     logger.debug(f"Processing {len(chunk)} products")
     processor = ProductProcessor()
-    for product in chunk:
+    for i, product in enumerate(chunk):
         p = Product(**product)
         processor.process(p)
+        logger.debug(f"Processing product # {i}")
     processor.flush()
 
 @celery.task(bind=True)
