@@ -265,7 +265,7 @@ class Product(NamedTuple):
 
 
 class BulkAdder:
-    def __init__(self, model: db.Model, threshold: int = 10000) -> None:
+    def __init__(self, model: db.Model, threshold: int = 2000) -> None:
         assert hasattr(model, 'bulk_insert_do_nothing')
         self._model = model
         self._threshold = threshold
