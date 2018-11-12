@@ -20,7 +20,7 @@ logger = getLogger(__name__)
 
 class SqlAlchemyBulkInserter:
     model = None
-    max_length = 10000
+    max_length = 5000
 
     def __init__(self, sequence_id):
         self._data = []

@@ -238,8 +238,8 @@ class WineComSpider(AbstractSpider):
     def get_listpages(self, response: Response) -> Iterator[Dict]:
         wine_types = self.get_wine_types(response)
         step = 25
-        items_scraped = 0
         for (wine_type, wines_total, wine_filter) in wine_types:
+            items_scraped = 0
             url = wine_filter
             if wines_total % step or wines_total < step:
                 wines_total += step
