@@ -60,7 +60,7 @@ class PipelineAttributeValueBulkInserter(SqlAlchemyBulkInserter):
             if k in prepared:
                 prepared[k] = v
             else:
-                raise ValueError(value)
+                continue
         super().insert(prepared)
 
     def insert_data(self, data):
@@ -303,53 +303,44 @@ class PipelineExtractor:
     def generate_extract_result(self, attributes, domain_attributes,
                                 product_id):
         result = []
-        # err_no_code = []
         for obj in attributes:
             # Lookup id for attribute code
             attributes_same_code = [a.id for a in domain_attributes if
                                     a.code == obj['code']]
             if not attributes_same_code:
-            #    err_no_code.append(obj['code'])
                 continue
             attr_id = attributes_same_code[0]
+            res = {'attribute_id': attr_id,
+                   'master_product_id': product_id,
+                   'source_id': self.source_id,
+                   'value_node_id': None,
+                   'original': obj.get('original', obj.get('value')),
+                   'value_float': None,
+                   'value': obj.get('value'),
+                   }
             if 'node_id' in obj:
-                result.append(
-                    {
-                        'attribute_id': attr_id,
-                        'master_product_id': product_id,
-                        'source_id': self.source_id,
-                        'datatype': "node_id",
-                        'value_node_id': obj['node_id'],
-                        'value_float': None
-                    }
-                )
+                res.update({'datatype': "node_id",
+                            'value_node_id': obj['node_id'],
+                            })
             elif 'value_float' in obj:
-                result.append(
+                res.update(
                     {
-                        'attribute_id': attr_id,
-                        'master_product_id': product_id,
-                        'source_id': self.source_id,
                         'datatype': "float",
-                        'value_node_id': None,
                         'value_float': obj['value_float'],
                     }
                 )
 
             elif 'value_boolean' in obj:
-                result.append(
+                res.update(
                     {
-                        'attribute_id': attr_id,
-                        'master_product_id': product_id,
-                        'source_id': self.source_id,
                         'datatype': "boolean",
-                        'value_boolean': obj['value_boolean']
+                        'value_boolean': obj['value_boolean'],
                     }
                 )
             else:
                 raise TypeError
-        #logger.warning(f"generate_extract_result:"
-        #               f" no domain attributes "
-        #               f"with codes: {', '.join(err_no_code)}")
+
+            result.append(res)
         return result
 
     def extract_information(self, sentence, product_id, extract_name=False, track_to=None):
@@ -393,9 +384,11 @@ class PipelineExtractor:
                 value_text = r.get('value_text')
                 value = None
                 if value_node_id:
-                    value = db.session.query(
-                        DomainTaxonomyNode.id, DomainTaxonomyNode.name
-                    ).filter_by(id=r['value_node_id']).first()[1]
+                    value = r.get('value')
+                    if not value:
+                        value = db.session.query(
+                            DomainTaxonomyNode.id, DomainTaxonomyNode.name
+                        ).filter_by(id=r['value_node_id']).first()[1]
                 elif value_integer:
                     value = value_integer
                 elif value_float:
@@ -410,7 +403,8 @@ class PipelineExtractor:
                 #    r.pop(k)
                 attributes.append({
                     'code': attr['code'],
-                    'value': value
+                    'value': value,
+                    'original': r['original'],
                 })
             track_to.append({
                 'text': orig,
