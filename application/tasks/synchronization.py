@@ -68,13 +68,13 @@ def queue_sequence(source_id: int):
         db.session.commit()
 
 
-def start_synchronization(source_id: int) -> str:
+def start_synchronization(source_id: int, full=True) -> str:
     from .spiders import task_execute_spider
     logger.info(f'Starting synchronization for source: {source_id}')
     queue_sequence(source_id)
     # if "is_use_interim" is not set, run a full sequence (with scraping)
     # if it is set, don't run the scraper, use the data from
-    job = task_execute_spider.si(source_id)\
+    job = task_execute_spider.si(source_id, full=full)\
            | get_products_task.si(source_id)\
            | process_product_list_task.s() \
            | execute_pipeline_task.si(source_id)

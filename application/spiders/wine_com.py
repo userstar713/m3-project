@@ -1,4 +1,3 @@
-import logging
 import re
 
 from typing import Iterator, Dict, IO
@@ -181,6 +180,8 @@ class WineComSpider(AbstractSpider):
         pass
 
     def login(self, response: Response) -> Iterator[Dict]:
+        # from scrapy.shell import inspect_response
+        # inspect_response(response, self)
         csrf_token = response.xpath(
             '//meta[@name="csrf"]/@content')
         token = csrf_token.extract_first()
@@ -270,8 +271,8 @@ class WineComSpider(AbstractSpider):
         # open_in_browser(response)
         selector = '//a[@class="prodItemInfo_link"]/@href'
         rows = response.xpath(selector)
-        product_link = [row.extract() for row in rows]
-        for product_link in product_link:
+        product_links = rows.getall()
+        for product_link in product_links:
             absolute_url = BASE_URL + product_link
             yield Request(
                 absolute_url,

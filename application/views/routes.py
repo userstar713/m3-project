@@ -1,10 +1,12 @@
-from flask import jsonify, request, Response
+from flask import (jsonify,
+                   request,
+                   Response)
+
+from application.tasks.spiders import execute_spider
 
 from .helpers import seller_integration_bp
 
 from ..tasks import start_synchronization
-
-from application.tasks.spiders import execute_spider
 
 
 @seller_integration_bp.route(
@@ -22,7 +24,13 @@ def index():
 def sync(source_id: int) -> Response:
     # content = request.get_json()
     # callback_url = content['callback_url']
-    status = start_synchronization(source_id)
+    try:
+        full = request.args.get('full', 1)
+        full = bool((int(full)))
+    except TypeError:
+        full = False
+
+    status = start_synchronization(source_id, full=full)
     return jsonify(
         {'data': {
             'status': status,

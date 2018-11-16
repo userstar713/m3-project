@@ -16,7 +16,7 @@ from application.spiders.base.abstracts.spider import (
 from .base import BaseScraper
 
 
-def get_spider_settings(tmp_file: io.IOBase) -> dict:
+def get_spider_settings(tmp_file: io.IOBase, full_scrape=False) -> dict:
     settings = {
         'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': COOKIES_DEBUG,
@@ -26,6 +26,7 @@ def get_spider_settings(tmp_file: io.IOBase) -> dict:
         'DOWNLOADER_CLIENTCONTEXTFACTORY': DOWNLOADER_CLIENTCONTEXTFACTORY,
         'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
         'CLOSESPIDER_PAGECOUNT': SCRAPER_PAGES_LIMIT,
+        'FULL_SCRAPE': full_scrape,
     }
     if PROXY_URL:
         settings.update({
@@ -41,8 +42,8 @@ def get_spider_settings(tmp_file: io.IOBase) -> dict:
         })
     return settings
 
-def run_spider(spider_cls, tmp_file):
-    settings = get_spider_settings(tmp_file)
+def run_spider(spider_cls, tmp_file, full=True):
+    settings = get_spider_settings(tmp_file, full_scrape=full)
     runner = CrawlerRunner(settings)
     deferred = runner.crawl(spider_cls)
     deferred.addBoth(lambda _: reactor.stop())
@@ -53,8 +54,8 @@ class SpiderScraper(BaseScraper):
     def __init__(self, spider_cls):
         self._spider_cls = spider_cls
 
-    def run(self) -> List[dict]:
+    def run(self, full=True) -> List[dict]:
         with NamedTemporaryFile() as f:
-            run_spider(self._spider_cls, f)
+            run_spider(self._spider_cls, f, full=full)
             return [json.loads(line) for line in f]
 

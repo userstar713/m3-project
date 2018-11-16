@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Dict
+from scrapy import Selector
 from scrapy.http.response import Response
 
 
 class AbstractParsedProduct(ABC):
 
-    def __init__(self, r: Response) -> None:
+    def __init__(self, r: Response, s: Selector = None) -> None:
         self.r = r
+        self.s = s
         self.name = self.get_name()
         self.additional = self.get_additional()
         self.result = {
