@@ -3,7 +3,7 @@ import re
 
 from typing import Iterator, Dict, IO
 
-from scrapy import FormRequest
+from scrapy import FormRequest, Selector
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
@@ -19,6 +19,47 @@ BASE_URL = 'https://www.klwines.com'
 
 def clean(s):
     return s.replace('\r', '').replace('\n', '').strip()
+
+
+class ParsedListPageProduct(AbstractParsedProduct):
+
+    def get_sku(self):
+        pass
+
+    def get_name(self) -> str:
+        return self.s.xpath(
+            'div[@class="result-desc"]/a/text()'
+        ).extract_first()
+
+    def get_vintage(self):
+        pass
+
+    def get_price(self) -> float:
+        s = clean(self.s.xpath(
+            'div[@class="result-info"]/span/span/span/strong/text()'
+        ).extract_first())
+        s = s.replace('$', '').replace(',', '')
+        try:
+            float_s = float(s)
+        except ValueError:
+            return "ERROR READING PRICE"
+        else:
+            return float_s
+
+    def get_image(self):
+        pass
+
+    def get_additional(self):
+        return {}
+
+    def get_bottle_size(self):
+        pass
+
+    def get_qoh(self):
+        pass
+
+    def get_reviews(self):
+        pass
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -251,22 +292,27 @@ class KLWinesSpider(AbstractSpider):
             self.logger.exception("Login failed")
             yield
         else:
-            selector = "//div[contains(concat(' ', @class, ' '), ' result ')]"
-            rows = response.xpath(selector)
+            full_scrape = self.settings['FULL_SCRAPE']
+            rows = response.xpath(
+                "//div[contains(concat(' ', @class, ' '), ' result ')]")
             links = []
             for row in rows:
-                if row:
-                    if 'auctionResult-desc' not in row.extract():
-                        link = row.xpath(
-                            'div[@class="result-desc"]/a/@href'
-                        ).extract_first()
-                        if link:
-                            links.append(link)
-                        else:
-                            logging.exception(
-                                f'Link not fount for {row} '
-                                f'on page: {response.url}'
-                            )
+                if full_scrape:
+                    if row:
+                        if 'auctionResult-desc' not in row.extract():
+                            link = row.xpath(
+                                'div[@class="result-desc"]/a/@href'
+                            ).extract_first()
+                            if link:
+                                links.append(link)
+                            else:
+                                logging.exception(
+                                    f'Link not fount for {row} '
+                                    f'on page: {response.url}'
+                                )
+                else:
+                    if row:
+                        yield self.parse_list_product(response, row)
             for link in links:
                 absolute_url = BASE_URL + link
                 yield Request(
@@ -274,6 +320,9 @@ class KLWinesSpider(AbstractSpider):
                     callback=self.parse_product,
                     meta={'wine_type': response.meta.get('wine_type')},
                     priority=1)
+
+    def parse_list_product(self, r: Response, s: Selector) -> Iterator[Dict]:
+        return WineItem(**ParsedListPageProduct(r, s).as_dict())
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         if self.is_not_logged(response):

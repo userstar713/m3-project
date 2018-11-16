@@ -6,6 +6,7 @@ from typing import List
 from flask import current_app
 from application.tasks.synchronization import celery
 from application.spiders import (klwines,
+                                 thewineclub,
                                  wine_com,
                                  wine_library)
 from application.db_extension.models import db, Source
@@ -34,7 +35,7 @@ def get_test_products() -> List:
 
 
 @celery.task(bind=True)
-def task_execute_spider(self, source_id: int) -> None:
+def task_execute_spider(self, source_id: int, full=True) -> None:
     source = db.session.query(Source).get(source_id)
     is_use_interim = source.is_use_interim
     is_data_exists = bool(get_products_from_redis(source_id))
@@ -55,6 +56,8 @@ def task_execute_spider(self, source_id: int) -> None:
         scraper = SpiderScraper(wine_library.WineLibrarySpider)
     elif source.name == 'Wine.com':
         scraper = SpiderScraper(wine_com.WineComSpider)
+    elif source.name == 'The wine club':
+        scraper = SpiderScraper(thewineclub.TheWineClubSpider)
     else:
         raise ValueError(f'No support for source with name {source.name}')
 
