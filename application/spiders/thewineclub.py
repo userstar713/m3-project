@@ -150,8 +150,7 @@ class ParsedProduct(AbstractParsedProduct):
                     'following-sibling::text()'
                 ).extract_first()
                 content = clean(content)
-                if content.startswith(' - '):
-                    content = content[3:]
+                content = content.lstrip('- ')
                 reviews.append({
                     'reviewer_name': reviewer_name or '',
                     'score_num': score_str and int(score_str) or None,
