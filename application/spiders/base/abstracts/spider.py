@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
+from typing import Iterator, Dict
+from scrapy.http.response import Response
 from scrapy.spiders import Spider
+from application.spiders.base.wine_item import WineItem
 
 CONCURRENT_REQUESTS = 16
 COOKIES_DEBUG = False
@@ -42,3 +45,25 @@ class AbstractSpider(ABC, Spider):
     @abstractmethod
     def parse_product(self, response):
         pass
+
+    @abstractmethod
+    def get_product_dict(self, response: Response):
+        pass
+
+    def check_product(self, response: Response):
+        product = self.get_product_dict(response)
+        return product
+
+    def check_list_product(self, response):
+        product = self.get_product_dict(response)
+        return product
+
+    def parse_product(self, response: Response) -> Iterator[Dict]:
+        product = self.check_product(response)
+        if product:
+            return WineItem(**product)
+
+    def parse_list_product(self, r: Response, s) -> Iterator[Dict]:
+        product = self.check_list_product(r, s)
+        if product:
+            return WineItem(**product)

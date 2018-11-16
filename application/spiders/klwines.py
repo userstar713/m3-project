@@ -11,14 +11,9 @@ from scrapy.crawler import CrawlerProcess
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
-from application.spiders.base.wine_item import WineItem
 
 
 BASE_URL = 'https://www.klwines.com'
-
-
-def clean(s):
-    return s.replace('\r', '').replace('\n', '').strip()
 
 
 class ParsedListPageProduct(AbstractParsedProduct):
@@ -35,7 +30,7 @@ class ParsedListPageProduct(AbstractParsedProduct):
         pass
 
     def get_price(self) -> float:
-        s = clean(self.s.xpath(
+        s = self.clean(self.s.xpath(
             'div[@class="result-info"]/span/span/span/strong/text()'
         ).extract_first())
         s = s.replace('$', '').replace(',', '')
@@ -72,7 +67,7 @@ class ParsedProduct(AbstractParsedProduct):
         return value
 
     def get_name(self) -> str:
-        return clean(self.r.xpath(
+        return self.clean(self.r.xpath(
             '//div[@class="result-desc"]/h1/text()'
         )[0].extract())
 
@@ -84,7 +79,7 @@ class ParsedProduct(AbstractParsedProduct):
         return res
 
     def get_price(self) -> float:
-        s = clean(self.r.xpath(
+        s = self.clean(self.r.xpath(
             f'//div[@class="result-info"]/span/span/strong/text()'
         )[0].extract())
         s = s.replace('$', '').replace(',', '')
@@ -112,16 +107,16 @@ class ParsedProduct(AbstractParsedProduct):
         detail_xpath_value = 'td[@class="detail_td"]/h3/text()'
         title_xpath = 'td[@class="detail_td1"]/text()'
         for row in rows:
-            title = clean(row.xpath(title_xpath).extract()[0])
+            title = self.clean(row.xpath(title_xpath).extract()[0])
             if title == "Alcohol Content (%):":
-                value = clean(row.xpath(
+                value = self.clean(row.xpath(
                     'td[@class="detail_td"]/text()').extract()[0])
                 additional['alcohol_pct'] = value
             else:
                 values = row.xpath(detail_xpath_value).extract()
                 value = values and values[0].replace(" and ", " ")
                 if title == "Varietal:":
-                    description = clean(
+                    description = self.clean(
                         row.xpath(
                             'td[@class="detail_td"]/text()').extract()[1])
                     additional['description'] = description
@@ -156,10 +151,10 @@ class ParsedProduct(AbstractParsedProduct):
             '//div[@class="result-desc"]/p'
         )
         for rp, text in zip(reviewer_point, texts):
-            reviewer_name = clean(
+            reviewer_name = self.clean(
                 ''.join(rp.xpath('text()').extract())
             )
-            content = clean(''.join(text.xpath('text()').extract()))
+            content = self.clean(''.join(text.xpath('text()').extract()))
 
             if 'K&L' in reviewer_name:
                 reviews.append({
@@ -171,7 +166,7 @@ class ParsedProduct(AbstractParsedProduct):
             else:
                 raw_points = rp.xpath('span/text()')
                 if raw_points:
-                    score = clean(
+                    score = self.clean(
                         raw_points[0].extract()
                     ).replace('points', '').strip()
                     if '-' in score:
@@ -191,7 +186,7 @@ class ParsedProduct(AbstractParsedProduct):
             '//div[@class="inventory clearfix"]/div[@class="column"]//tr')
         qoh = 0
         for row in rows[1:]:
-            qty = clean(row.xpath('td/text()')[-1].extract())
+            qty = self.clean(row.xpath('td/text()')[-1].extract())
             qty = qty.replace('>', '').replace('<', '')
             qoh += int(qty)
         return qoh
@@ -321,15 +316,8 @@ class KLWinesSpider(AbstractSpider):
                     meta={'wine_type': response.meta.get('wine_type')},
                     priority=1)
 
-    def parse_list_product(self, r: Response, s: Selector) -> Iterator[Dict]:
-        return WineItem(**ParsedListPageProduct(r, s).as_dict())
-
-    def parse_product(self, response: Response) -> Iterator[Dict]:
-        if self.is_not_logged(response):
-            self.logger.exception("Login failed")
-            return None
-        return WineItem(**ParsedProduct(response).as_dict())
-
+    def get_product_dict(self, response: Response):
+        return ParsedProduct(response).as_dict()
 
 def get_data(tmp_file: IO) -> None:
     settings = get_spider_settings(tmp_file)
