@@ -88,13 +88,13 @@ class ParsedProduct(AbstractParsedProduct):
         if not image_link:
             image_link = self.r.xpath(
                 '//img[@class="pipHero_image-default"]/@src').extract_first()
-            if image_link:
-                image_link = image_link.replace(
-                    'w_767,c_fit,q_auto:good,fl_progressive',
-                    'w_1080')
-                image_link = image_link.replace(
-                    'h_50,c_fit,fl_progressive',
-                    'w_1080')
+        if image_link:
+            image_link = image_link.replace(
+                'w_767,c_fit,q_auto:good,fl_progressive',
+                'w_1080')
+            image_link = image_link.replace(
+                'h_50,c_fit,fl_progressive',
+                'w_1080')
         return '/'.join([BASE_URL, image_link])
 
     def get_alcohol_pct(self) -> str:
