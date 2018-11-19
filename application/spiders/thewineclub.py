@@ -1,6 +1,6 @@
 import re
 
-from typing import Iterator, Dict, IO
+from typing import Iterator, Dict, IO, List
 
 from scrapy import FormRequest
 from scrapy.http.request import Request
@@ -294,6 +294,10 @@ class TheWineClubSpider(AbstractSpider):
                 callback=self.parse_product,
                 meta={'wine_type': response.meta['wine_type']},
                 priority=1)
+
+    @property
+    def ignored_images(self) -> List[str]:
+        return ['not_available.gif']
 
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()

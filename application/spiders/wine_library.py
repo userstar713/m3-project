@@ -1,7 +1,7 @@
 import logging
 import re
 
-from typing import Iterator, Dict, IO
+from typing import Iterator, Dict, IO, List
 
 from scrapy import FormRequest
 from scrapy.http.request import Request
@@ -271,6 +271,10 @@ class WineLibrarySpider(AbstractSpider):
                     absolute_url,
                     callback=self.parse_product,
                     priority=1)
+
+    @property
+    def ignored_images(self) -> List[str]:
+        return ['square.png']
 
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()

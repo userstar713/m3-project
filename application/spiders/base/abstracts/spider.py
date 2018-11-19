@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Iterator, Dict
+from typing import Iterator, Dict, List
 from scrapy.http.response import Response
 from scrapy.spiders import Spider
 from application.spiders.base.wine_item import WineItem
@@ -50,14 +50,31 @@ class AbstractSpider(ABC, Spider):
     def get_list_product_dict(self, response: Response):
         pass
 
+    def _check_bottle_size(self, bottle_size: int) -> bool:
+        return bottle_size == 750
+
+    def _check_product_image(self, image: str) -> bool:
+        if not image:
+            return False
+        relative_image = image.split('/')[-1]
+        return relative_image not in self.ignored_images
+
     def check_product(self, response: Response):
         res = self.get_product_dict(response)
-        bottle_size = res['bottle_size']
-        return bottle_size == 750 and res
+        if not self._check_bottle_size(res['bottle_size']):
+            return None
+        if not self._check_product_image(res['image']):
+            return None
+        return res
 
     def check_list_product(self, response):
         product = self.get_list_product_dict(response)
         return product
+
+    @property
+    @abstractmethod
+    def ignored_images(self) -> List[str]:
+        pass
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         product = self.check_product(response)
