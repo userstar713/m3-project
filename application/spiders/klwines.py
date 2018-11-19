@@ -1,7 +1,7 @@
 import logging
 import re
 
-from typing import Iterator, Dict, IO
+from typing import Iterator, Dict, List, IO
 
 from scrapy import FormRequest, Selector
 from scrapy.http.request import Request
@@ -315,6 +315,18 @@ class KLWinesSpider(AbstractSpider):
                     callback=self.parse_product,
                     meta={'wine_type': response.meta.get('wine_type')},
                     priority=1)
+
+    @property
+    def ignored_images(self) -> List[str]:
+        return ['genericred-l.jpg',
+                'shiner_red_burgundy_l.jpg',
+                'shiner_white_l.jpg',
+                'shiner_white_burgundy_l.jpg',
+                'shiner_riesling_l.jpg',
+                'shiner_sparkling_l.jpg',
+                'shiner_sauternes_l.jpg',
+                'shiner_port_l.jpg',
+                ]
 
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
