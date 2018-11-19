@@ -16,7 +16,7 @@ from application.spiders.base.abstracts.spider import (
 from .base import BaseScraper
 
 
-def get_spider_settings(tmp_file: io.IOBase, full_scrape=False) -> dict:
+def get_spider_settings(tmp_file: io.IOBase, full_scrape=True) -> dict:
     settings = {
         'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': COOKIES_DEBUG,

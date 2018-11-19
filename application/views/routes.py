@@ -29,7 +29,6 @@ def sync(source_id: int) -> Response:
         full = bool((int(full)))
     except TypeError:
         full = False
-
     status = start_synchronization(source_id, full=full)
     return jsonify(
         {'data': {

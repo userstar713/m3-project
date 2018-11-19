@@ -1,4 +1,3 @@
-import logging
 import re
 
 from typing import Iterator, Dict, IO
@@ -11,13 +10,9 @@ from scrapy.crawler import CrawlerProcess
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
-from application.spiders.base.wine_item import WineItem
+
 
 BASE_URL = 'https://www.thewineclub.com'
-
-
-def clean(s):
-    return s.replace('\r', '').replace('\n', '').strip()
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -37,7 +32,7 @@ class ParsedProduct(AbstractParsedProduct):
         description = self.r.xpath(
             '//div[@id="moreinfo"]/p/text()'
         ).getall()
-        description = clean(''.join(description))
+        description = self.clean(''.join(description))
         return description
 
     def get_sku(self) -> str:
@@ -149,9 +144,8 @@ class ParsedProduct(AbstractParsedProduct):
                 content = score_b.xpath(
                     'following-sibling::text()'
                 ).extract_first()
-                content = clean(content)
-                if content.startswith(' - '):
-                    content = content[3:]
+                content = self.clean(content)
+                content = content.lstrip('- ')
                 reviews.append({
                     'reviewer_name': reviewer_name or '',
                     'score_num': score_str and int(score_str) or None,
@@ -301,10 +295,11 @@ class TheWineClubSpider(AbstractSpider):
                 meta={'wine_type': response.meta['wine_type']},
                 priority=1)
 
-    def parse_product(self, response: Response) -> Iterator[Dict]:
-        # from scrapy.utils.response import open_in_browser
-        # open_in_browser(response)
-        return WineItem(**ParsedProduct(response).as_dict())
+    def get_product_dict(self, response: Response):
+        return ParsedProduct(response).as_dict()
+
+    def get_list_product_dict(self, response: Response):
+        raise NotImplementedError
 
 
 def get_data(tmp_file: IO) -> None:

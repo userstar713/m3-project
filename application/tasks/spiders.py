@@ -60,8 +60,7 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
         scraper = SpiderScraper(thewineclub.TheWineClubSpider)
     else:
         raise ValueError(f'No support for source with name {source.name}')
-
-    data = scraper.run()
+    data = scraper.run(full=full)
 
     cache.set(f'spider::{source_id}::data',
               pickle.dumps(data, protocol=-1),

@@ -500,7 +500,7 @@ class ProductProcessor:
             return
 
         qoh = int(product.qoh)
-        price_int = round(price * 100)  # TODO Check why it's multiplied by 100
+        price_int = round(price * 100)
 
         slp = SourceLocationProductProxy.get_by(
             source_product_id=self.source_product_id,

@@ -28,6 +28,9 @@ class AbstractParsedProduct(ABC):
             'sku': self.get_sku(),
         }
 
+    def clean(self, s):
+        return s.replace('\r', '').replace('\n', '').strip()
+
     def get_url(self):
         return self.r.url
 

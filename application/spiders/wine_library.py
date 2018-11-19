@@ -272,11 +272,11 @@ class WineLibrarySpider(AbstractSpider):
                     callback=self.parse_product,
                     priority=1)
 
-    def parse_product(self, response: Response) -> Iterator[Dict]:
-        if self.is_not_logged(response):
-            logger.exception("Login failed")
-            return None
-        return WineItem(**ParsedProduct(response).as_dict())
+    def get_product_dict(self, response: Response):
+        return ParsedProduct(response).as_dict()
+
+    def get_list_product_dict(self, response: Response):
+        raise NotImplementedError
 
 
 def get_data(tmp_file: IO) -> None:

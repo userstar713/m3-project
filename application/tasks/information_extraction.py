@@ -384,7 +384,6 @@ class PipelineExtractor:
                 value_text = r.get('value_text')
                 value = None
                 if value_node_id:
-                    value = r.get('value')
                     if not value:
                         value = db.session.query(
                             DomainTaxonomyNode.id, DomainTaxonomyNode.name
