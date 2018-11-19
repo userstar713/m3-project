@@ -295,9 +295,11 @@ class TheWineClubSpider(AbstractSpider):
                 meta={'wine_type': response.meta['wine_type']},
                 priority=1)
 
-    def check_product(self, response: Response):
-        product = ParsedProduct(response).as_dict()
-        return product
+    def get_product_dict(self, response: Response):
+        return ParsedProduct(response).as_dict()
+
+    def get_list_product_dict(self, response: Response):
+        raise NotImplementedError
 
 
 def get_data(tmp_file: IO) -> None:

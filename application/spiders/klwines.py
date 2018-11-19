@@ -319,6 +319,10 @@ class KLWinesSpider(AbstractSpider):
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
+    def get_list_product_dict(self, response: Response):
+        return ParsedListPageProduct(response).as_dict()
+
+
 def get_data(tmp_file: IO) -> None:
     settings = get_spider_settings(tmp_file)
     process = CrawlerProcess(settings)

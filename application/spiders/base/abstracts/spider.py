@@ -43,27 +43,30 @@ class AbstractSpider(ABC, Spider):
         pass
 
     @abstractmethod
-    def parse_product(self, response):
-        pass
-
-    @abstractmethod
     def get_product_dict(self, response: Response):
         pass
 
+    @abstractmethod
+    def get_list_product_dict(self, response: Response):
+        pass
+
     def check_product(self, response: Response):
-        product = self.get_product_dict(response)
-        return product
+        res = self.get_product_dict(response)
+        bottle_size = res['bottle_size']
+        return bottle_size == 750 and res
 
     def check_list_product(self, response):
-        product = self.get_product_dict(response)
+        product = self.get_list_product_dict(response)
         return product
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         product = self.check_product(response)
         if product:
             return WineItem(**product)
+        return
 
     def parse_list_product(self, r: Response, s) -> Iterator[Dict]:
         product = self.check_list_product(r, s)
         if product:
             return WineItem(**product)
+        return
