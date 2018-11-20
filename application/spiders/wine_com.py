@@ -141,6 +141,9 @@ class ParsedProduct(AbstractParsedProduct):
             reviewer_name = row.xpath(
                 'div[@class="pipProfessionalReviews_authorName"]/text()'
             ).extract_first()
+            if reviewer_name:
+                reviewer_name = self.match_reviewer_name(reviewer_name)
+
             content = row.xpath(
                 'div/div[@class="pipSecContent_copy"]/text()'
             ).extract_first()
@@ -300,7 +303,10 @@ def get_data(tmp_file: IO) -> None:
 
 if __name__ == '__main__':
     import os
-    current_path = os.getcwd()
-    file_name = os.path.join(current_path, 'wine_com.txt')
-    with open(file_name, 'w') as out_file:
-        get_data(out_file)
+    from application import create_app
+    app = create_app()
+    with app.app_context():
+        current_path = os.getcwd()
+        file_name = os.path.join(current_path, 'wine_com.txt')
+        with open(file_name, 'w') as out_file:
+            get_data(out_file)

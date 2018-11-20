@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict
 from scrapy import Selector
 from scrapy.http.response import Response
+from sqlalchemy import text
+from application.db_extension.models import db
 
 
 class AbstractParsedProduct(ABC):
@@ -27,6 +29,13 @@ class AbstractParsedProduct(ABC):
             'bottle_size': self.get_bottle_size(),
             'sku': self.get_sku(),
         }
+
+    def match_reviewer_name(self, name: str) -> str:
+        t = text("SELECT name "
+                 "FROM domain_reviewers, jsonb_array_elements_text(aliases) "
+                 "WHERE value ILIKE :name")
+        res = db.session.execute(t, params={'name': name})
+        return res.scalar() or name
 
     def clean(self, s):
         return s.replace('\r', '').replace('\n', '').strip()
