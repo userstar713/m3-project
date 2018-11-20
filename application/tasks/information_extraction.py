@@ -384,10 +384,9 @@ class PipelineExtractor:
                 value_text = r.get('value_text')
                 value = None
                 if value_node_id:
-                    if not value:
-                        value = db.session.query(
-                            DomainTaxonomyNode.id, DomainTaxonomyNode.name
-                        ).filter_by(id=r['value_node_id']).first()[1]
+                    value = db.session.query(
+                        DomainTaxonomyNode.id, DomainTaxonomyNode.name
+                    ).filter_by(id=r['value_node_id']).first()[1]
                 elif value_integer:
                     value = value_integer
                 elif value_float:
