@@ -54,7 +54,7 @@ class AbstractSpider(ABC, Spider):
         return bottle_size == 750
 
     def _check_product_image(self, image: str) -> bool:
-        if not image:
+        if not image or 'default_bottle' in image:
             return False
         relative_image = image.split('/')[-1]
         return relative_image not in self.ignored_images

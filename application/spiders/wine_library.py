@@ -160,6 +160,7 @@ class ParsedProduct(AbstractParsedProduct):
         for i, row in enumerate(review_rows):
             score = row.xpath('b/span[@itemprop="reviewRating"]')
             score_str = ''
+            reviewer_name = ''
             if score:
                 score_str = score.xpath(
                     'span[@itemprop="ratingValue"]/text()').extract()[0]
@@ -174,6 +175,9 @@ class ParsedProduct(AbstractParsedProduct):
                     reviewer_name = score.replace(f'{score_str} ', '')
             if not score_str:
                 continue
+            if reviewer_name:
+                reviewer_name = self.match_reviewer_name(reviewer_name)
+
             content = review_rows[i + 1].xpath('text()').extract() or ''
             if content:
                 content = clean(content[0])
@@ -274,7 +278,7 @@ class WineLibrarySpider(AbstractSpider):
 
     @property
     def ignored_images(self) -> List[str]:
-        return ['square.png']
+        return []
 
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
@@ -292,7 +296,10 @@ def get_data(tmp_file: IO) -> None:
 
 if __name__ == '__main__':
     import os
-    current_path = os.getcwd()
-    file_name = os.path.join(current_path, 'winelibrary.txt')
-    with open(file_name, 'w') as out_file:
-        get_data(out_file)
+    from application import create_app
+    app = create_app()
+    with app.app_context():
+        current_path = os.getcwd()
+        file_name = os.path.join(current_path, 'winelibrary.txt')
+        with open(file_name, 'w') as out_file:
+            get_data(out_file)

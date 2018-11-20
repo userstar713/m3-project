@@ -141,6 +141,8 @@ class ParsedProduct(AbstractParsedProduct):
                 if reviewer_name:
                     reviewer_name = reviewer_name[0].replace(
                         f' {score_str}', '')
+                    reviewer_name = self.match_reviewer_name(reviewer_name)
+
                 content = score_b.xpath(
                     'following-sibling::text()'
                 ).extract_first()
@@ -315,7 +317,10 @@ def get_data(tmp_file: IO) -> None:
 
 if __name__ == '__main__':
     import os
-    current_path = os.getcwd()
-    file_name = os.path.join(current_path, 'thewineclub.txt')
-    with open(file_name, 'w') as out_file:
-        get_data(out_file)
+    from application import create_app
+    app = create_app()
+    with app.app_context():
+        current_path = os.getcwd()
+        file_name = os.path.join(current_path, 'thewineclub.txt')
+        with open(file_name, 'w') as out_file:
+            get_data(out_file)

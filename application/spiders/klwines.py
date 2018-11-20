@@ -155,6 +155,8 @@ class ParsedProduct(AbstractParsedProduct):
                 ''.join(rp.xpath('text()').extract())
             )
             content = self.clean(''.join(text.xpath('text()').extract()))
+            if reviewer_name:
+                reviewer_name = self.match_reviewer_name(reviewer_name)
 
             if 'K&L' in reviewer_name:
                 reviews.append({
@@ -344,7 +346,10 @@ def get_data(tmp_file: IO) -> None:
 
 if __name__ == '__main__':
     import os
-    current_path = os.getcwd()
-    file_name = os.path.join(current_path, 'klwines.txt')
-    with open(file_name, 'w') as out_file:
-        get_data(out_file)
+    from application import create_app
+    app = create_app()
+    with app.app_context():
+        current_path = os.getcwd()
+        file_name = os.path.join(current_path, 'klwines.txt')
+        with open(file_name, 'w') as out_file:
+            get_data(out_file)
