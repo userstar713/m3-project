@@ -135,7 +135,12 @@ class ParsedProduct(AbstractParsedProduct):
                 if '.' in detail_value:
                     detail_value = float(detail_value) * 100
                 else:
-                    detail_value = int(detail_value)
+                    try:
+                        detail_value = int(detail_value)
+                    except ValueError:
+                        logger.exception(
+                            f'Invalid int() value: {detail_value}')
+                        detail_value = ''
                 if detail_value and detail_value < 10:
                     detail_value *= 1000
                 additional['bottle_size'] = detail_value

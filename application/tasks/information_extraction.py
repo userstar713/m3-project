@@ -12,11 +12,11 @@ from application.db_extension.models import (PipelineAttributeValue,
                                              PipelineReviewContent)
 from application.db_extension.models  import DomainAttribute, DomainTaxonomyNode
 from application.db_extension.models import MasterProductProxy, SourceProductProxy
+from application.logging import logger
 from application.utils import remove_duplicates, split_to_sentences
 from application.summarization import summarize
 from logging import getLogger
 
-logger = getLogger(__name__)
 
 class SqlAlchemyBulkInserter:
     model = None
@@ -145,16 +145,21 @@ class PipelineExtractor:
             if row.review_score:
                 review_score += row.review_score
                 review_count += 1
-            if row.content:
+            content = row.content
+            if (not content or
+                    not content.strip('"') or
+                    not content.strip("'")):
+                content = self.description_contents_data.get(
+                    product.id, '')
+            if content:
                 tmp_res = []
-                result = self.extract_from_reviews(row.content, product.id,
+                result = self.extract_from_reviews(content, product.id,
                                                    track_to=tmp_res)
                 short_descs_data.append({
                     'reviewer': row.reviewer_name,
                     'rating': row.review_score,
                     'sentences': tmp_res})
                 res += result
-            # logger.debug("pipeline_info_extraction: numSentences=" + str(len(sentences)))
         # Now calculate and insert rating for product if available
         logger.debug("pipeline_info_extraction: review_count="+ str(review_count))
         if review_count:
@@ -177,7 +182,7 @@ class PipelineExtractor:
 
 
         # EXTRACT FROM DESCRIPTION FOR THOSE THAT REQUIRE
-        content = self.description_contents_data.get(product.id, [])
+        content = self.description_contents_data.get(product.id, '')
         tmp_res = []
         result = self.extract_from_descriptions(content, product.id, track_to=tmp_res)
         short_descs_data.append({
@@ -210,15 +215,15 @@ class PipelineExtractor:
     def process_all(self):
         begin_time = datetime.now()
         total = len(self.products)
+        self.description_contents_data = dict(
+            get_description_contents_data(self.sequence_id,
+                                          self.source_id))
         for pctr, product in enumerate(self.products):
             logger.debug("pipeline_info_extraction: " + str(pctr) + ' ' + product.name)
             # If we have a debug search string, continue if it's not in product name
             if self.debug_product_search_str and self.debug_product_search_str in product.name:
                 continue
 
-            self.description_contents_data = dict(
-                get_description_contents_data(self.source_id,
-                                              self.sequence_id))
             result = self.process_product(product)
             self.pav_bulk_inserter.insert_data(result)
             if not pctr % 100:
@@ -262,9 +267,10 @@ class PipelineExtractor:
                 if len(sentence) <= 5:
                     continue
                 # print('* {}'.format(sentence))
-                result, _ = self.extract_information(sentence, product_id, track_to=track_to)
+                result = self.extract_information(sentence, product_id, track_to=track_to)
+                if result:
                 # logger.debug("pipeline_info_extraction: done inserting sentence for prod description content")
-                res += result
+                    res += result
         return res
 
     def filter_temp_attributes(self, content, sentence, product_id,
@@ -408,7 +414,6 @@ class PipelineExtractor:
                 'text': orig,
                 'attributes': attributes
             })
-        # logger.debug("pipeline_info_extraction: _extract_information completes")
         return result
 
 def get_domain_attributes_from_db(**kwargs):
