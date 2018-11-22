@@ -151,8 +151,6 @@ class PipelineExtractor:
                     not content.strip("'")):
                 content = self.description_contents_data.get(
                     product.id, '')
-                logger.info(f"CONTENT {content}")
-
             if content:
                 tmp_res = []
                 result = self.extract_from_reviews(content, product.id,
@@ -162,7 +160,6 @@ class PipelineExtractor:
                     'rating': row.review_score,
                     'sentences': tmp_res})
                 res += result
-            # logger.debug("pipeline_info_extraction: numSentences=" + str(len(sentences)))
         # Now calculate and insert rating for product if available
         logger.debug("pipeline_info_extraction: review_count="+ str(review_count))
         if review_count:
@@ -185,7 +182,7 @@ class PipelineExtractor:
 
 
         # EXTRACT FROM DESCRIPTION FOR THOSE THAT REQUIRE
-        content = self.description_contents_data.get(product.id, [])
+        content = self.description_contents_data.get(product.id, '')
         tmp_res = []
         result = self.extract_from_descriptions(content, product.id, track_to=tmp_res)
         short_descs_data.append({
@@ -272,9 +269,8 @@ class PipelineExtractor:
                 # print('* {}'.format(sentence))
                 result = self.extract_information(sentence, product_id, track_to=track_to)
                 if result:
-                    result = result[0]
                 # logger.debug("pipeline_info_extraction: done inserting sentence for prod description content")
-                res += result
+                    res += [result[0]]
         return res
 
     def filter_temp_attributes(self, content, sentence, product_id,
@@ -418,7 +414,6 @@ class PipelineExtractor:
                 'text': orig,
                 'attributes': attributes
             })
-        # logger.debug("pipeline_info_extraction: _extract_information completes")
         return result
 
 def get_domain_attributes_from_db(**kwargs):

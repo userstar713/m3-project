@@ -47,6 +47,7 @@ services:
     depends_on:
       - db
       - redis
+    restart: always
     environment:
       - DEBUG=1
       - FLASK_APP=application/wsgi
@@ -65,6 +66,7 @@ services:
     depends_on:
       - db
       - redis
+    restart: always
     environment:
       - DEBUG=1
       - SCRAPER_PAGES_LIMIT=50
