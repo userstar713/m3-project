@@ -270,7 +270,7 @@ class PipelineExtractor:
                 result = self.extract_information(sentence, product_id, track_to=track_to)
                 if result:
                 # logger.debug("pipeline_info_extraction: done inserting sentence for prod description content")
-                    res += [result[0]]
+                    res += result
         return res
 
     def filter_temp_attributes(self, content, sentence, product_id,
