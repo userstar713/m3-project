@@ -3,7 +3,6 @@ from scrapy.item import Item
 
 class WineItem(Item):
     name = Field()
-    url = Field()
     price = Field()
     vintage = Field()
     msrp = Field()
@@ -22,7 +21,7 @@ class WineItem(Item):
     bottle_size = Field()
     qoh = Field()
     # highlights = Field()
-    # single_product_url = Field()
+    single_product_url = Field()
     alcohol_pct = Field()
     # drink_from = Field()
     # drink_to = Field()

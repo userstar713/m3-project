@@ -32,7 +32,21 @@ class ParsedProduct(AbstractParsedProduct):
         description = self.r.xpath(
             '//div[@id="moreinfo"]/p/text()'
         ).getall()
-        description = self.clean(''.join(description))
+        if not description:
+            description = self.r.xpath(
+                '//div[@id="moreinfo"]/text()'
+            ).getall()
+            description = self.clean(''.join(description))
+        if not description:
+            description = self.r.xpath(
+                '//div[@id="moreinfo"]//td/text()'
+            ).getall()
+            description = self.clean(' '.join(description))
+        if not description:
+            description = self.r.xpath(
+                '//div[@id="tastingnotes"]/text()'
+            ).getall()
+            description = self.clean(' '.join(description))
         return description
 
     def get_sku(self) -> str:
@@ -266,7 +280,7 @@ class TheWineClubSpider(AbstractSpider):
         ]
         for data in datas:
             wine_type = data.get('selcolor', data.get('attributes2'))
-            data.update(general_data)
+            data = {**general_data, **data}
             yield FormRequest.from_response(
                 response,
                 formxpath='//form[@name="frmadvsearch"]',

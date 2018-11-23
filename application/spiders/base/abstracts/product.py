@@ -14,7 +14,7 @@ class AbstractParsedProduct(ABC):
         self.name = self.get_name()
         self.additional = self.get_additional()
         self.result = {
-            'url': self.get_url(),
+            'single_product_url': self.get_url(),
             'name': self.name,
             'vintage': self.get_vintage(),
             'description': self.get_description(),
