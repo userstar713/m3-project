@@ -28,7 +28,7 @@ BASE_PATH = Path(__file__).parent
 
 SQLALCHEMY_DATABASE_URI = getenv('SQLALCHEMY_DATABASE_URI',
                                  'postgresql://'
-                                 'postgres:password@localhost:5432/m3')
+                                 'postgres:password@db:5432/m3')
 
 # https://github.com/mitsuhiko/flask-sqlalchemy/issues/365
 SQLALCHEMY_TRACK_MODIFICATIONS = False

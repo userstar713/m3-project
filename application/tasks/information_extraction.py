@@ -150,6 +150,12 @@ class PipelineExtractor:
         for row in review_contents:
             if row.review_score:
                 review_score += row.review_score
+                score_modifier = db.session.query(
+                    DomainReviewer.score_modifier
+                ).filter_by(name=row.reviewer_name).scalar()
+                if score_modifier:
+                    review_score += score_modifier
+
                 review_count += 1
             content = row.content
             if (not content or
