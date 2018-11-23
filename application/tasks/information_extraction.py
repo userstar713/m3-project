@@ -2,20 +2,24 @@ import re
 from collections import defaultdict
 from datetime import datetime
 
+from logging import getLogger
 from sqlalchemy.dialects import postgresql
 
 from application.stopwords import STOPWORDS
 from application.db_extension.routines import (domain_attribute_lookup,
                                                get_description_contents_data)
-from application.db_extension.models import db
-from application.db_extension.models import (PipelineAttributeValue,
-                                             PipelineReviewContent)
-from application.db_extension.models  import DomainAttribute, DomainTaxonomyNode
-from application.db_extension.models import MasterProductProxy, SourceProductProxy
+from application.db_extension.models import (
+    db,
+    DomainAttribute,
+    DomainReviewer,
+    DomainTaxonomyNode,
+    MasterProductProxy,
+    PipelineAttributeValue,
+    PipelineReviewContent,
+    SourceProductProxy)
 from application.logging import logger
 from application.utils import remove_duplicates, split_to_sentences
 from application.summarization import summarize
-from logging import getLogger
 
 
 class SqlAlchemyBulkInserter:
@@ -68,8 +72,10 @@ class PipelineAttributeValueBulkInserter(SqlAlchemyBulkInserter):
             item['sequence_id'] = self._sequence_id
             self.insert(item)
 
-patterns_presents = lambda x: x.extract_content_support \
-                              and 'regex_patterns' in x.extract_content_support
+
+def patterns_presents(x): return x.extract_content_support \
+    and 'regex_patterns' in x.extract_content_support
+
 
 class PipelineExtractor:
     def __init__(self, source_id, sequence_id,
@@ -79,11 +85,11 @@ class PipelineExtractor:
         self.debug_product_search_str = debug_product_search_str
 
         logger.info("pipeline_information_extraction: starts, sourceId=" + str(
-            source_id)  + ", sequence_id==" + str(sequence_id))
+            source_id) + ", sequence_id==" + str(sequence_id))
 
         domain_attributes = db.session.query(DomainAttribute).all()
         if not domain_attributes:
-            raise ValueError(f'{DomainAttribute.__tablename__} is empty!' )
+            raise ValueError(f'{DomainAttribute.__tablename__} is empty!')
         self.rating_attribute_id = \
             [attr.id for attr in domain_attributes if
              attr.code == 'rating'][0]
@@ -114,9 +120,9 @@ class PipelineExtractor:
 
         self.products = list(
             db.session.query(MasterProductProxy.id, MasterProductProxy.name)
-                .join(SourceProductProxy.master_product)
-                .filter(MasterProductProxy.source_id == source_id,
-                        SourceProductProxy.source_id == source_id))
+            .join(SourceProductProxy.master_product)
+            .filter(MasterProductProxy.source_id == source_id,
+                    SourceProductProxy.source_id == source_id))
         self.pav_bulk_inserter = PipelineAttributeValueBulkInserter(
             sequence_id=sequence_id)
         self.description_contents_data = None
@@ -144,6 +150,12 @@ class PipelineExtractor:
         for row in review_contents:
             if row.review_score:
                 review_score += row.review_score
+                score_modifier = db.session.query(
+                    DomainReviewer.score_modifier
+                ).filter_by(name=row.reviewer_name).scalar()
+                if score_modifier:
+                    review_score += score_modifier
+
                 review_count += 1
             content = row.content
             if (not content or
@@ -155,13 +167,15 @@ class PipelineExtractor:
                 tmp_res = []
                 result = self.extract_from_reviews(content, product.id,
                                                    track_to=tmp_res)
+
                 short_descs_data.append({
                     'reviewer': row.reviewer_name,
                     'rating': row.review_score,
                     'sentences': tmp_res})
                 res += result
         # Now calculate and insert rating for product if available
-        logger.debug("pipeline_info_extraction: review_count="+ str(review_count))
+        logger.debug("pipeline_info_extraction: review_count=" +
+                     str(review_count))
         if review_count:
             avg = review_score / review_count
             obj = {'attribute_id': self.rating_attribute_id,
@@ -176,15 +190,15 @@ class PipelineExtractor:
         # EXTRACT FROM PRODUCT NAME FOR THOSE THAT REQUIRE
         # logger.debug("pipeline_info_extraction: starts _extract_info for productname=" + product.name)
         result = self.extract_information(product.name, product.id,
-                                             extract_name=True)
+                                          extract_name=True)
         # logger.debug("pipeline_info_extraction: done _extract_info for productname="+ product.name)
         res += result
-
 
         # EXTRACT FROM DESCRIPTION FOR THOSE THAT REQUIRE
         content = self.description_contents_data.get(product.id, '')
         tmp_res = []
-        result = self.extract_from_descriptions(content, product.id, track_to=tmp_res)
+        result = self.extract_from_descriptions(
+            content, product.id, track_to=tmp_res)
         short_descs_data.append({
             'reviewer': None,
             'rating': None,
@@ -205,7 +219,6 @@ class PipelineExtractor:
                 }
             )
 
-
         # logger.debug("pipeline_info_extraction: done insert result into pipline_attribute_values for productname=" + product.name)
 
         # Update the master product with the extra (unknown) words found in name
@@ -219,7 +232,8 @@ class PipelineExtractor:
             get_description_contents_data(self.sequence_id,
                                           self.source_id))
         for pctr, product in enumerate(self.products):
-            logger.debug("pipeline_info_extraction: " + str(pctr) + ' ' + product.name)
+            logger.debug("pipeline_info_extraction: " +
+                         str(pctr) + ' ' + product.name)
             # If we have a debug search string, continue if it's not in product name
             if self.debug_product_search_str and self.debug_product_search_str in product.name:
                 continue
@@ -246,7 +260,8 @@ class PipelineExtractor:
             if len(sentence) <= 5:
                 continue
             # print('* {}'.format(sentence))
-            result = self.extract_information(sentence, product_id, track_to=track_to)
+            result = self.extract_information(
+                sentence, product_id, track_to=track_to)
             #
             # logger.debug("pipeline_info_extraction: sentence_idx="+ str(sctr) + ", done extract info")
             res += result
@@ -267,9 +282,10 @@ class PipelineExtractor:
                 if len(sentence) <= 5:
                     continue
                 # print('* {}'.format(sentence))
-                result = self.extract_information(sentence, product_id, track_to=track_to)
+                result = self.extract_information(
+                    sentence, product_id, track_to=track_to)
                 if result:
-                # logger.debug("pipeline_info_extraction: done inserting sentence for prod description content")
+                    # logger.debug("pipeline_info_extraction: done inserting sentence for prod description content")
                     res += result
         return res
 
@@ -401,7 +417,7 @@ class PipelineExtractor:
                     value = value_boolean
                 elif value_text:
                     value = value_text
-                #for k in ['attribute_id',
+                # for k in ['attribute_id',
                 #          'master_product_id',
                 #          'source_id']:
                 #    r.pop(k)
@@ -416,19 +432,20 @@ class PipelineExtractor:
             })
         return result
 
+
 def get_domain_attributes_from_db(**kwargs):
     rows = db.session.query(DomainAttribute).filter_by(**kwargs)
     # extract and convert to list
     output = []
     for row in rows:
         obj = {
-               'id': row.id,
-               'code': row.code,
-               'extract_content_support': row.extract_content_support,
-               'datatype': row.datatype,
-               'should_extract_values': row.should_extract_values,
-               'should_extract_from_name': row.should_extract_from_name
-               }
+            'id': row.id,
+            'code': row.code,
+            'extract_content_support': row.extract_content_support,
+            'datatype': row.datatype,
+            'should_extract_values': row.should_extract_values,
+            'should_extract_from_name': row.should_extract_from_name
+        }
         output.append(obj)
 
     return output
