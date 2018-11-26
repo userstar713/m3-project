@@ -227,6 +227,7 @@ class WineComSpider(AbstractSpider):
             wine_type = row.xpath(
                 'a/span[@class="filterMenu_itemName"]/text()'
             ).extract_first()
+            wine_type = wine_type.replace(' Wine', '')
             wine_type = wine_type.replace('Champagne & ', '')
             wine_type = wine_type.replace('Rosé', 'Rose')
             wine_type = wine_type.replace(', Sherry & Port', '')
