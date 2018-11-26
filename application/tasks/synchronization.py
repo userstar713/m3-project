@@ -31,7 +31,7 @@ def process_product_list_task(_, chunk: List[dict]) -> None:
         p = Product(**product)
         processor.process(p)
         logger.info(f"Processing product # {i}")
-    processor.flush()
+        processor.flush()
 
 
 @celery.task(bind=True)
