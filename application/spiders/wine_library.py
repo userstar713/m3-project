@@ -17,10 +17,6 @@ from application.spiders.base.wine_item import WineItem
 BASE_URL = 'https://winelibrary.com'
 
 
-def clean(s):
-    return s.replace('\r', '').replace('\n', '').strip()
-
-
 class ParsedProduct(AbstractParsedProduct):
 
     def __init__(self, r: Response) -> None:
@@ -38,9 +34,21 @@ class ParsedProduct(AbstractParsedProduct):
         return self.additional['characteristics']
 
     def get_description(self) -> str:
-        description = self.r.xpath(
-            "//p[@itemprop='description']/text()")
-        return description and description[0].extract()
+        desc = self.r.xpath(
+            "//p[@itemprop='description']/text()"
+        ).extract_first()
+        desc = desc and self.clean(desc) if desc else ''
+        features = self.r.xpath(
+            '//td[text()="Features"]/following-sibling::td[1]/text()'
+        ).extract_first()
+        if features:
+            desc = f'{desc} {features}'
+        closure = self.r.xpath(
+            '//td[text()="Closure"]/following-sibling::td[1]/text()'
+        ).extract_first()
+        if closure:
+            desc = f'{desc} {closure}'
+        return desc
 
     def get_sku(self) -> str:
         return self.additional['sku']
@@ -151,7 +159,7 @@ class ParsedProduct(AbstractParsedProduct):
                     additional['wine_type'] = detail_value
             elif detail_name in ('Taste', 'Nose'):
                 if detail_value:
-                    characteristic = clean(detail_value)
+                    characteristic = self.clean(detail_value)
                     characteristics.append(characteristic)
         additional['characteristics'] = ', '.join(characteristics)
         return additional
@@ -174,7 +182,7 @@ class ParsedProduct(AbstractParsedProduct):
             else:
                 score = row.xpath('b/text()').extract()
                 if score:
-                    score = clean(score[0])
+                    score = self.clean(score[0])
                     scoring = score.split(' ')
                     score_str = scoring[0].isdigit() and scoring[0]
                     reviewer_name = score.replace(f'{score_str} ', '')
@@ -185,7 +193,7 @@ class ParsedProduct(AbstractParsedProduct):
 
             content = review_rows[i + 1].xpath('text()').extract() or ''
             if content:
-                content = clean(content[0])
+                content = self.clean(content[0])
             if score_str:
                 score_str = ''.join(score_str.split('-')[-1])
                 score_str = score_str.replace('+', '')
@@ -201,7 +209,7 @@ class ParsedProduct(AbstractParsedProduct):
             '//div[@class="inventory clearfix"]/div[@class="column"]//tr')
         qoh = 0
         for row in rows[1:]:
-            qty = clean(row.xpath('td/text()')[-1].extract())
+            qty = self.clean(row.xpath('td/text()')[-1].extract())
             qty = qty.replace('>', '').replace('<', '')
             qoh += int(qty)
         return qoh
