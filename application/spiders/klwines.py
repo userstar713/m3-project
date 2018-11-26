@@ -321,6 +321,7 @@ class KLWinesSpider(AbstractSpider):
     @property
     def ignored_images(self) -> List[str]:
         return ['genericred-l.jpg',
+                'genericred-xl.jpg',
                 'shiner_red_burgundy_l.jpg',
                 'shiner_white_l.jpg',
                 'shiner_white_burgundy_l.jpg',

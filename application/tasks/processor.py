@@ -424,7 +424,7 @@ class ProductProcessor:
         db.session.commit()
         self.master_product_id = master_product.id
 
-        source_product, _ = SourceProductProxy.get_or_create(
+        source_product = SourceProductProxy.create(
             name=self.product.name,
             source_id=self.product.source_id,
             master_product_id=self.master_product_id)
@@ -552,7 +552,6 @@ class ProductProcessor:
 
             brand_id = value if da_code == 'brand' else None
         self.process_master_product()
-        self.clean_source_tables(self.source_product_id)
         for sav in sav_list:
             self.sav_bulk_adder.add(sav)
         raw_reviews = prepare_reviews(product.reviews)
@@ -564,16 +563,22 @@ class ProductProcessor:
             self.review_bulk_adder.add(review)
         return self.master_product_id
 
-    @log_durations(logger.info, unit='ms')
-    def clean_source_tables(self, product_id: int) -> None:
-        db.session.query(
-            SourceAttributeValue
-        ).filter_by(
-            source_product_id=product_id
-        ).delete()
-        db.session.query(
-            SourceReview
-        ).filter_by(
-            source_product_id=product_id
-        ).delete()
-        db.session.commit()
+
+def clean_sources(source_id: int) -> None:
+    # TODO run on the full scrape only
+    db.session.query(
+        SourceAttributeValue
+    ).filter_by(
+        source_id=source_id
+    ).delete(synchronize_session=False)
+    db.session.query(
+        SourceProductProxy
+    ).filter_by(
+        source_id=source_id
+    ).delete(synchronize_session=False)
+    db.session.query(
+        SourceReview
+    ).filter_by(
+        source_id=source_id
+    ).delete(synchronize_session=False)
+    db.session.commit()

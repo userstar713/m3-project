@@ -12,7 +12,7 @@ from application.spiders import (klwines,
 from application.db_extension.models import db, Source
 from application.caching import cache
 
-from application.scrapers import SpiderScraper, CSVURLScraper
+from application.scrapers import SpiderScraper
 from .common import get_products_from_redis
 
 
@@ -46,11 +46,7 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
         return None
 
     # TODO refactor that
-    if source.name == 'Vinomogul':
-        scraper = CSVURLScraper(
-            'https://dl.dropbox.com/s/sli22wzl4i245fm/out_new_dev.csv'
-        )
-    elif source.name == 'K&L Wines':
+    if source.name == 'K&L Wines':
         scraper = SpiderScraper(klwines.KLWinesSpider)
     elif source.name == 'Wine Library':
         scraper = SpiderScraper(wine_library.WineLibrarySpider)

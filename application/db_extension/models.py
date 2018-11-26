@@ -43,11 +43,17 @@ class GetIdOrCreateMixin:
     def get_or_create(cls, **kwargs):
         r = cls.get_by(**kwargs)
         if not r:
-            r = cls(**kwargs)
-            db.session.add(r)
+            r = cls.create(**kwargs)
             return r, True
         else:
             return r, False
+
+    @classmethod
+    def create(cls, **kwargs):
+        r = cls(**kwargs)
+        db.session.add(r)
+        return r
+
 
 
 class BulkInsertDoNothingMixin:
