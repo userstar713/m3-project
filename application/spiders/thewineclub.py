@@ -321,6 +321,13 @@ class TheWineClubSpider(AbstractSpider):
     def get_list_product_dict(self, response: Response):
         raise NotImplementedError
 
+    def check_prearrival(self, product: dict, response: Response):
+        return self.is_prearrival(product['name'])
+
+    def check_multipack(self, product: dict, response: Response):
+        regex = re.compile(r'.*(\d Pack).*', re.IGNORECASE)
+        return bool(regex.match(product['name']))
+
 
 def get_data(tmp_file: IO) -> None:
     settings = get_spider_settings(tmp_file)

@@ -205,14 +205,11 @@ class ParsedProduct(AbstractParsedProduct):
         return reviews
 
     def get_qoh(self) -> int:
-        rows = self.r.xpath(
-            '//div[@class="inventory clearfix"]/div[@class="column"]//tr')
-        qoh = 0
-        for row in rows[1:]:
-            qty = self.clean(row.xpath('td/text()')[-1].extract())
-            qty = qty.replace('>', '').replace('<', '')
-            qoh += int(qty)
-        return qoh
+        row = self.r.xpath(
+            '//div[@id="qty-box"]/input')
+        qty = row.xpath('@data-running-out-stop').extract_first()
+        max_qty = row.xpath('@max').extract_first()
+        return qty and int(qty) or max_qty and int(max_qty)
 
 
 class WineLibrarySpider(AbstractSpider):
@@ -298,6 +295,18 @@ class WineLibrarySpider(AbstractSpider):
 
     def get_list_product_dict(self, response: Response):
         raise NotImplementedError
+
+    def check_prearrival(self, product: dict, response: Response):
+        text = response.xpath(
+            '//div[@class="alert_message mb5"]/strong/text()'
+        ).extract_first() or ''
+        return self.is_prearrival(text)
+
+    def check_multipack(self, product: dict, response: Response):
+        size_label = response.xpath(
+            '//td[text()="Size"]/following-sibling::td[1]/text()'
+        ).extract_first()
+        return size_label == 'each'
 
 
 def get_data(tmp_file: IO) -> None:
