@@ -101,11 +101,13 @@ class AbstractSpider(ABC, Spider):
         is_valid = self.check_product(product, response)
         if is_valid:
             return WineItem(**product)
-        raise DropItem(f'Invalid product {product}')
+        # raise DropItem(f'Invalid product {product}')
+        return
 
     def parse_list_product(self, r: Response, s) -> Iterator[Dict]:
         product = self.get_list_product_dict(r)
         is_valid = self.check_list_product(product, r)
         if is_valid:
             return WineItem(**product)
-        return DropItem(f'Invalid product {product}')
+        # return DropItem(f'Invalid product {product}')
+        return

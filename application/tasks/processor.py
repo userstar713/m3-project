@@ -340,7 +340,6 @@ class ProductProcessor:
                                     nlps['target_text'], cleaned_string)
         return cleaned_string
 
-    @log_durations(logger.info, unit='ms')
     def generate_review(self, data):
         domain_reviewer_id = drc.get_id_by_name_or_alias(
             name_or_alias=data.get('reviewer_name', 'Unknown')
@@ -367,7 +366,6 @@ class ProductProcessor:
             'source_id': self.product.source_id,
         }
 
-    @log_durations(logger.info, unit='ms')
     def generate_sav_list(self,
                           value,
                           da_id,
@@ -413,7 +411,6 @@ class ProductProcessor:
             result.append(res)
         return result
 
-    @log_durations(logger.info, unit='ms')
     def create_master_and_source(self):
         master_product, _ = MasterProductProxy.get_or_create(
             name=self.product.name,
@@ -431,7 +428,6 @@ class ProductProcessor:
         db.session.commit()
         self.source_product_id = source_product.id
 
-    @log_durations(logger.info, unit='ms')
     def prepare_process_product(self, name: str) -> dict:
         """
         Cleanup product name, look for brand and non attribute words
@@ -451,7 +447,6 @@ class ProductProcessor:
             'extra_words': []
         }
 
-    @log_durations(logger.info, unit='ms')
     def process_master_product(self) -> dict:
         prepared = self.prepare_process_product(self.product.name)
         upd_data = {
@@ -488,10 +483,6 @@ class ProductProcessor:
         ).filter_by(
             source_id=product.source_id
         ).first()
-        if not location_ids:
-            logger.error(
-                f'No location found for source_id={product.source_id}')
-            raise
         location_id = location_ids[0]
         price = get_float_number(product.price)
         if not price or price < 1:
@@ -502,24 +493,13 @@ class ProductProcessor:
         qoh = int(product.qoh)
         price_int = round(price * 100)
 
-        slp = SourceLocationProductProxy.get_by(
+        db.session.add(source_location_product.SourceLocationProduct(
             source_product_id=self.source_product_id,
-            source_location_id=location_id
-        )
-        if slp:
-            slp.price = price
-            slp.qoh = qoh
-            slp.price_int = price_int
-            db.session.commit()
-        else:
-            db.session.add(source_location_product.SourceLocationProduct(
-                source_product_id=self.source_product_id,
-                source_location_id=location_id,
-                price=price,
-                price_int=price_int,
-                qoh=qoh)
-            )
-            db.session.commit()
+            source_location_id=location_id,
+            price=price,
+            price_int=price_int,
+            qoh=qoh))
+        db.session.commit()
         sav_list = []
         for (da_code, value) in self.product.as_dict().items():
             da = self.domain_attributes.get(da_code)
@@ -540,6 +520,8 @@ class ProductProcessor:
 
             # `sav` is a `source attribute value`
             assert self.source_product_id
+            if not value:
+                continue
             savs = self.generate_sav_list(value=value,
                                           da_id=da[
                                               'id'],
@@ -575,6 +557,21 @@ def clean_sources(source_id: int) -> None:
         SourceProductProxy
     ).filter_by(
         source_id=source_id
+    ).delete(synchronize_session=False)
+    location_ids = db.session.query(
+        source_location.SourceLocation.id
+    ).filter_by(
+        source_id=source_id
+    ).first()
+    if not location_ids:
+        logger.error(
+            f'No location found for source_id={source_id}')
+        raise
+
+    db.session.query(
+        SourceLocationProductProxy
+    ).filter_by(
+        source_location_id=location_ids[0]
     ).delete(synchronize_session=False)
     db.session.query(
         SourceReview

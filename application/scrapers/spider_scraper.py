@@ -1,9 +1,11 @@
 import io
 import json
 
+from billiard import Process
 from tempfile import NamedTemporaryFile
 from typing import List
-from scrapy.crawler import CrawlerRunner
+from scrapy import signals
+from scrapy.crawler import Crawler
 
 from twisted.internet import reactor
 from application.config import (SCRAPER_PAGES_LIMIT,
@@ -13,7 +15,6 @@ from application.spiders.base.abstracts.spider import (
     CONCURRENT_REQUESTS,
     COOKIES_DEBUG,
     DOWNLOADER_CLIENTCONTEXTFACTORY)
-from .base import BaseScraper
 
 
 def get_spider_settings(tmp_file: io.IOBase, full_scrape=True) -> dict:
@@ -42,20 +43,28 @@ def get_spider_settings(tmp_file: io.IOBase, full_scrape=True) -> dict:
         })
     return settings
 
-def run_spider(spider_cls, tmp_file, full=True):
-    settings = get_spider_settings(tmp_file, full_scrape=full)
-    runner = CrawlerRunner(settings)
-    deferred = runner.crawl(spider_cls)
-    deferred.addBoth(lambda _: reactor.stop())
-    reactor.run()
+
+class CrawlerScript(Process):
+    def __init__(self, tmp_file, spider, full):
+        Process.__init__(self)
+        settings = get_spider_settings(tmp_file, full_scrape=full)
+        self.crawler = Crawler(spider, settings)
+        self.crawler.signals.connect(
+            reactor.stop, signal=signals.spider_closed)
+        self.spider = spider
+
+    def run(self):
+        self.crawler.crawl()
+        reactor.run()
 
 
-class SpiderScraper(BaseScraper):
+class SpiderScraper():
     def __init__(self, spider_cls):
         self._spider_cls = spider_cls
 
     def run(self, full=True) -> List[dict]:
         with NamedTemporaryFile() as f:
-            run_spider(self._spider_cls, f, full=full)
+            crawler = CrawlerScript(f, self._spider_cls, full)
+            crawler.start()
+            crawler.join()
             return [json.loads(line) for line in f]
-
