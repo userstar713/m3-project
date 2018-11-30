@@ -34,7 +34,8 @@ def get_brand(name: str) -> str:
     unaccented_name = remove_diacritics(name)
     brands = get_brands(unaccented_name)
     brand = brands and brands[0]['value'] or None
-    return brand
+    brand_node_id = brands and brands[0]['node_id'] or None
+    return brand, brand_node_id
 
 
 def get_brands(unaccented_name: str) -> list:
@@ -199,6 +200,7 @@ class Product(NamedTuple):
     vintage: str
     msrp: str
     brand: str
+    brand_node_id: int
     region: str
     varietals: str
     foods: str
@@ -224,6 +226,10 @@ class Product(NamedTuple):
     @staticmethod
     def from_raw(source_id: int, product: dict) -> 'Product':
         try:
+            brand_node_id = None
+            brand = product.get('brand')
+            if not brand:
+                brand, brand_node_id = get_brand(product['name'])
             _product = {
                 'source_id': source_id,
                 'name': product['name'],
@@ -231,7 +237,8 @@ class Product(NamedTuple):
                 'price': product.get('price'),
                 'vintage': product.get('vintage'),
                 'msrp': product.get('msrp'),
-                'brand': product.get('brand') or get_brand(product['name']),
+                'brand': brand,
+                'brand_node_id': brand_node_id,
                 'region': product.get('region'),
                 'varietals': product.get('varietals'),
                 'foods': product.get('foods'),
@@ -265,7 +272,7 @@ class Product(NamedTuple):
 
 
 class BulkAdder:
-    def __init__(self, model: db.Model, threshold: int = 2000) -> None:
+    def __init__(self, model: db.Model, threshold: int = 10000) -> None:
         assert hasattr(model, 'bulk_insert_do_nothing')
         self._model = model
         self._threshold = threshold
@@ -384,8 +391,7 @@ class ProductProcessor:
             if datatype == 'node_id' and prop:
                 node_id = get_domain_taxonomy_node_id_from_dict(
                     da_code,
-                    remove_diacritics(prop) if prop else '')
-                # if node_id != -1:
+                    remove_diacritics(prop))
                 val = node_id
             res = {
                 'source_product_id': self.source_product_id,
@@ -437,12 +443,10 @@ class ProductProcessor:
         # logger.info("preparing product started")
         # pipeline_attribute_lookup already calls cleanup_string() below
         # name = self.replace_with_nlp_ngrams(name.lower())
-        unaccented_name = remove_diacritics(name)
-        brands = get_brands(unaccented_name)
-        brand_node_id = brands and brands[0]['node_id'] or None
+        brand_node_id = self.product.brand_node_id
         # logger.info("preparing product finished")
         return {
-            'processed': unaccented_name,
+            'processed': remove_diacritics(name),
             'brand_node_id': brand_node_id,
             'extra_words': []
         }
