@@ -272,7 +272,7 @@ class Product(NamedTuple):
 
 
 class BulkAdder:
-    def __init__(self, model: db.Model, threshold: int = 10000) -> None:
+    def __init__(self, model: db.Model, threshold: int = 5000) -> None:
         assert hasattr(model, 'bulk_insert_do_nothing')
         self._model = model
         self._threshold = threshold
@@ -468,8 +468,6 @@ class ProductProcessor:
             id=self.master_product_id)
         q.count()
         q.update(upd_data, synchronize_session='fetch')
-        db.session.commit()
-        # logger.info("process product finsihed")
         return {
             'name': self.product.name,
             'processed': prepared['processed'],
@@ -503,7 +501,6 @@ class ProductProcessor:
             price=price,
             price_int=price_int,
             qoh=qoh))
-        db.session.commit()
         sav_list = []
         for (da_code, value) in self.product.as_dict().items():
             da = self.domain_attributes.get(da_code)
@@ -547,6 +544,7 @@ class ProductProcessor:
         ]
         for review in to_insert_reviews:
             self.review_bulk_adder.add(review)
+        db.session.commit()
         return self.master_product_id
 
 
