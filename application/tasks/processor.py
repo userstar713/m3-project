@@ -323,8 +323,6 @@ class ProductProcessor:
         self.domain_attributes = {row.code: row.__dict__ for row in
                                   db.session.query(DomainAttribute)}
         self.category_id = get_default_category_id()
-        self.to_insert_SAV = []
-        self.to_insert_reviews = []
         self.master_product_id = None
         self.source_product_id = None
         self.product = None
@@ -466,7 +464,6 @@ class ProductProcessor:
         # logger.info("updating master_product")
         q = db.session.query(MasterProductProxy).filter_by(
             id=self.master_product_id)
-        q.count()
         q.update(upd_data, synchronize_session='fetch')
         return {
             'name': self.product.name,
