@@ -61,9 +61,8 @@ class BulkInsertDoNothingMixin:
     @classmethod
     def bulk_insert_do_nothing(cls, items: Iterable[dict]) -> None:
         if items:
-            db.session.bulk_insert_mappings(
-                cls, items
-            )
+            statement = cls.__table__.insert().values(items)
+            db.session.execute(statement)
             db.session.commit()
 
 class SourceLocationProductProxy(source_location_product.SourceLocationProduct, GetIdOrCreateMixin):
