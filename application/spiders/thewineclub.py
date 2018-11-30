@@ -94,10 +94,13 @@ class ParsedProduct(AbstractParsedProduct):
     def get_image(self) -> str:
         image_link = self.r.xpath(
             '//div[@id="bmg_itemdetail_thumbs"]/ul/li/a/@href'
-        ).extract_first()
+        ).extract_first() or None
         if image_link:
-            return '/'.join([BASE_URL, image_link])
-        return None
+            if image_link.startswith('//library'):
+                image_link = ''.join(['https:', image_link])
+            else:
+                image_link = '/'.join([BASE_URL, image_link])
+        return image_link
 
     def get_alcohol_pct(self) -> str:
         # return self.r.xpath(
