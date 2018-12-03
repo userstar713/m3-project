@@ -143,16 +143,13 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
 class DomainReviewers:
     data: list = []
 
-    def initialize(self):
-        _data = db.session.query(DomainReviewer.id,
-                                 DomainReviewer.name,
-                                 DomainReviewer.aliases)
-        for d in _data:
-            self.data.append({
-                'id': d.id,
-                'name': d.name,
-                'aliases': d.aliases,
-            })
+    def __init__(self):
+        rows = db.session.query(
+            DomainReviewer.id,
+            DomainReviewer.name,
+            DomainReviewer.aliases
+        ).all()
+        self.data = [row._asdict() for row in rows]
 
     def get_id_by_name_or_alias(self, name_or_alias):
         for item in self.data:
@@ -187,9 +184,6 @@ def prepare_reviews(reviews: list) -> list:
             reviews = []
     reviews = listify(reviews)
     return reviews
-
-
-drc = DomainReviewers()
 
 
 class Product(NamedTuple):
@@ -328,6 +322,7 @@ class ProductProcessor:
         self.product = None
         self.sav_bulk_adder = BulkAdder(SourceAttributeValue)
         self.review_bulk_adder = BulkAdder(SourceReview)
+        self.drc = DomainReviewers()
         # self.nlp_synonyms = get_nlp_ngrams() TODO deprecated??
 
     def flush(self):
@@ -346,7 +341,7 @@ class ProductProcessor:
         return cleaned_string
 
     def generate_review(self, data):
-        domain_reviewer_id = drc.get_id_by_name_or_alias(
+        domain_reviewer_id = self.drc.get_id_by_name_or_alias(
             name_or_alias=data.get('reviewer_name', 'Unknown')
         )
         if not data.get('reviewer_name'):
