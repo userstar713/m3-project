@@ -33,9 +33,11 @@ class AbstractParsedProduct(ABC):
     def match_reviewer_name(self, name: str) -> str:
         t = text("SELECT name "
                  "FROM domain_reviewers, jsonb_array_elements_text(aliases) "
-                 "WHERE value ILIKE :name OR name ILIKE :name")
-        res = db.session.execute(t, params={'name': name})
-        return res.scalar() or name
+                 "WHERE value ILIKE :name OR name ILIKE :name "
+                 "OR substring(LOWER(:name), LOWER(name)) IS NOT NULL "
+                 "LIMIT 1")
+        res = db.session.execute(t, params={'name': name}).scalar()
+        return res or name
 
     def clean(self, s):
         return s.replace('\r', '').replace('\n', '').strip()
