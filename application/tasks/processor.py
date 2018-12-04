@@ -269,7 +269,7 @@ class Product(NamedTuple):
 
 
 class BulkAdder:
-    def __init__(self, model: db.Model, threshold: int = 5000) -> None:
+    def __init__(self, model: db.Model, threshold: int = 3000) -> None:
         assert hasattr(model, 'bulk_insert_do_nothing')
         self._model = model
         self._threshold = threshold
@@ -278,7 +278,7 @@ class BulkAdder:
     def add(self, data: dict) -> None:
         if data not in self._data:
             self._data.append(data)
-            if len(self._data) == self._threshold:
+            if len(self._data) >= self._threshold:
                 self.flush()
 
     def flush(self) -> None:
