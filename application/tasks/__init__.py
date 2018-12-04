@@ -6,6 +6,7 @@ def init_celery(app):
     # set broker url and result backend from app config
     celery.conf.broker_url = app.config['CELERY_BROKER_URL']
     celery.conf.result_backend = app.config['CELERY_RESULT_BACKEND']
+    celery.conf.worker_concurrency = 3
     if app.config['CELERY_EAGER']:
         celery.conf.task_always_eager = True
         celery.conf.task_eager_propagates = True
