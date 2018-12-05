@@ -3,6 +3,7 @@ from flask import (jsonify,
                    Response)
 
 from application.tasks.spiders import execute_spider
+from application.tasks.synchronization import execute_pipeline_task
 
 from .helpers import seller_integration_bp
 
@@ -50,4 +51,14 @@ def scrape(source_id: int) -> Response:
                 'status': status,
             }
         }
+    )
+
+
+@seller_integration_bp.route(
+    '/source/<int:source_id>/execute_pipeline/',
+)
+def execute_pipeline(source_id: int) -> Response:
+    status = execute_pipeline_task(source_id)
+    return jsonify(
+        {'data': {'status': 'ok'}}
     )
