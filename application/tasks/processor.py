@@ -134,11 +134,16 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
     # node_id = 12345;
     # return node_id;
     attr_result = attribute_lookup(
-        sentence=attribute_value, brand_treatment='include')
+        sentence=attribute_value,
+        brand_treatment='include',
+        attribute_code=attribute_code)
     if attr_result:
 
         res = [x for x in attr_result if x['code'] == attribute_code]
         if not res:
+            logger.info(
+                'Attribute code not found (add aliases to '
+                'domain_taxonomy_node): {attribute_code} {attr_result}')
             res = attr_result
         result = res[0]['node_id']
     else:
