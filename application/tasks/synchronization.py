@@ -33,6 +33,8 @@ def process_product_list_task(_, chunk: List[dict]) -> None:
         processor.process(p)
         cpu_usage = psutil.cpu_percent()
         logger.info(f"Processing product # {i} {product} {cpu_usage}")
+        if i > 6000:  # TODO remove this when WorkerLostError is fixed
+            break
     processor.flush()
 
 
