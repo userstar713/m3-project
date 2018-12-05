@@ -137,8 +137,10 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
         sentence=attribute_value, brand_treatment='include')
     if attr_result:
 
-        res = [x for x in attr_result if x['code'] == attribute_code][0]
-        result = res['node_id']
+        res = [x for x in attr_result if x['code'] == attribute_code]
+        if not res:
+            res = attr_result
+        result = res[0]['node_id']
     else:
         result = -1
     # logger.debug("*** NODE ID: {}-{}-{} {} ".format(category_id, attribute_code, attribute_value, result))
