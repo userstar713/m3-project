@@ -33,7 +33,7 @@ def process_product_list_task(_, chunk: List[dict]) -> None:
         p = Product(**product)
         processor.process(p)
         cpu_usage = psutil.cpu_percent()
-        if not i % 10:
+        if not i % 1000:
             gc.collect()
         logger.info(f"Processing product # {i} {product} {cpu_usage}")
     processor.flush()
