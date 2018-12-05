@@ -420,6 +420,9 @@ class ProductProcessor:
             source_identifier='TEST',  # TODO  is it required?
             category_id=self.category_id
         )
+        if master_product.is_ignored:
+            return False, False
+
         db.session.commit()
         self.master_product_id = master_product.id
 
@@ -429,6 +432,7 @@ class ProductProcessor:
             master_product_id=self.master_product_id)
         db.session.commit()
         self.source_product_id = source_product.id
+        return master_product.id, source_product.id
 
     def prepare_process_product(self, name: str) -> dict:
         """
@@ -474,7 +478,9 @@ class ProductProcessor:
     @profile
     def process(self, product: Product):
         self.product = product
-        self.create_master_and_source()
+        master_product_id, source_product_id = self.create_master_and_source()
+        if not master_product_id:
+            return False
 
         location_ids = db.session.query(
             source_location.SourceLocation.id
@@ -486,13 +492,13 @@ class ProductProcessor:
         if not price or price < 1:
             logger.error(
                 'webhook - ERROR - Invalid price, p={}'.format(product))
-            return
+            return False
 
         qoh = int(product.qoh)
         price_int = round(price * 100)
 
         db.session.add(source_location_product.SourceLocationProduct(
-            source_product_id=self.source_product_id,
+            source_product_id=source_product_id,
             source_location_id=location_id,
             price=price,
             price_int=price_int,
@@ -529,7 +535,6 @@ class ProductProcessor:
             if savs:
                 sav_list += savs
 
-            brand_id = value if da_code == 'brand' else None
         self.process_master_product()
         for sav in sav_list:
             self.sav_bulk_adder.add(sav)
@@ -541,7 +546,7 @@ class ProductProcessor:
         for review in to_insert_reviews:
             self.review_bulk_adder.add(review)
         db.session.commit()
-        return self.master_product_id
+        return master_product_id
 
 
 def clean_sources(source_id: int) -> None:
