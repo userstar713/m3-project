@@ -31,7 +31,8 @@ def filter_tsquery(s):
 
 @cache.memoize(timeout=60 * 60 * 24 * 7)
 def attribute_lookup(sentence,
-                     brand_treatment='exclude'):
+                     brand_treatment='exclude',
+                     attribute_code=False):
     """
     function attribute_lookup2(p_category_id bigint,
                                p_search_str text,
@@ -77,18 +78,20 @@ def attribute_lookup(sentence,
     # Remove potentially problematic chars
     sentence = re.sub('[^A-Za-z0-9$]+', ' ', sentence).lstrip()
 
-    q = """SELECT * 
-           FROM public.attribute_lookup2 (:category_id, 
-                                          :sentence, 
+    q = """SELECT *
+           FROM public.attribute_lookup2 (:category_id,
+                                          :sentence,
                                           :brand_treatment);
         """
-
+    if attribute_code:
+        q = q.replace(':brand_treatment', ':brand_treatment, :attribute_code')
     # Note 'exclude' because we don't extract brands and False because we don't
     # want to constrain to current store (which we are populating!)
     rows = db.session.execute(q, {
         'category_id': get_default_category_id(),
         'sentence': filter_tsquery(sentence),
-        'brand_treatment': brand_treatment
+        'brand_treatment': brand_treatment,
+        'attribute_code': attribute_code,
     })
     attributes = []
     for row in rows:

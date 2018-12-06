@@ -50,7 +50,9 @@ def get_brands(unaccented_name: str) -> list:
     # attr_codes = get_process_product_attributes()
 
     attributes = attribute_lookup(
-        sentence=unaccented_name, brand_treatment='include')
+        sentence=unaccented_name,
+        brand_treatment='include',
+        attribute_code='brand')
     brands = filter_brands(attributes)
     if len(brands) > 1:  # what to do if more than one brand returned?
         logger.warning(
@@ -134,11 +136,16 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
     # node_id = 12345;
     # return node_id;
     attr_result = attribute_lookup(
-        sentence=attribute_value, brand_treatment='include')
+        sentence=attribute_value,
+        brand_treatment='include',
+        attribute_code=attribute_code)
     if attr_result:
 
         res = [x for x in attr_result if x['code'] == attribute_code]
         if not res:
+            logger.info(
+                'Attribute code not found (add aliases to '
+                'domain_taxonomy_node): {attribute_code} {attr_result}')
             res = attr_result
         result = res[0]['node_id']
     else:
@@ -172,7 +179,7 @@ class DomainReviewers:
 
 def process_varietals(product_name, attribute_code, value):
     # logger.debug('process_varietals: {} {}'.format(product_name, attribute_code))
-    name_varietals = attribute_lookup(sentence=product_name)
+    name_varietals = attribute_lookup(sentence=product_name, attribute_code='varietals')
     new_value = value
     if len(name_varietals) > 0:
         new_value = ', '.join(varietal['value'] for varietal in name_varietals)
