@@ -9,6 +9,7 @@ from .common import get_products_from_redis
 from .processor import ProductProcessor, Product, clean_sources
 from .pipeline import execute_pipeline
 
+import time
 import gc
 import psutil
 
@@ -34,6 +35,7 @@ def process_product_list_task(_, chunk: List[dict]) -> None:
         processor.process(p)
         cpu_usage = psutil.cpu_percent()
         if not i % 1000:
+            time.sleep(45)
             gc.collect()
         logger.info(f"Processing product # {i} {product} {cpu_usage}")
     processor.flush()

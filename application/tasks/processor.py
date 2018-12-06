@@ -50,7 +50,9 @@ def get_brands(unaccented_name: str) -> list:
     # attr_codes = get_process_product_attributes()
 
     attributes = attribute_lookup(
-        sentence=unaccented_name, brand_treatment='include')
+        sentence=unaccented_name,
+        brand_treatment='include',
+        attribute_code='brand')
     brands = filter_brands(attributes)
     if len(brands) > 1:  # what to do if more than one brand returned?
         logger.warning(
@@ -177,7 +179,7 @@ class DomainReviewers:
 
 def process_varietals(product_name, attribute_code, value):
     # logger.debug('process_varietals: {} {}'.format(product_name, attribute_code))
-    name_varietals = attribute_lookup(sentence=product_name)
+    name_varietals = attribute_lookup(sentence=product_name, attribute_code='varietals')
     new_value = value
     if len(name_varietals) > 0:
         new_value = ', '.join(varietal['value'] for varietal in name_varietals)
