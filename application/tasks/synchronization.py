@@ -9,9 +9,6 @@ from .common import get_products_from_redis
 from .processor import ProductProcessor, Product, clean_sources
 from .pipeline import execute_pipeline
 
-import time
-import gc
-import psutil
 
 celery = Celery(__name__, autofinalize=False)
 
@@ -33,11 +30,7 @@ def process_product_list_task(_, chunk: List[dict]) -> None:
     for i, product in enumerate(chunk):
         p = Product(**product)
         processor.process(p)
-        cpu_usage = psutil.cpu_percent()
-        if not i % 1000:
-            time.sleep(45)
-            gc.collect()
-        logger.info(f"Processing product # {i} {product} {cpu_usage}")
+        logger.info(f"Processing product # {i}")
     processor.flush()
 
 

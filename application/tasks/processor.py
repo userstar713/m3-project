@@ -3,7 +3,6 @@ import re
 from datetime import datetime
 from typing import NamedTuple
 from funcy import log_durations
-from memory_profiler import profile
 from sqlalchemy.sql.expression import func
 from application.caching import cache
 from application.db_extension.models import (db,
@@ -21,9 +20,6 @@ from application.db_extension.routines import (
     attribute_lookup)
 from application.utils import listify, get_float_number
 from application.logging import logger
-from memory_profiler import LogFile
-import sys
-sys.stdout = LogFile('memory_profile_log', reportIncrementFlag=False)
 from .helpers import DATATYPES, remove_diacritics
 
 
@@ -486,7 +482,6 @@ class ProductProcessor:
         }
 
     @log_durations(logger.info, unit='ms')
-    @profile
     def process(self, product: Product):
         self.product = product
         master_product_id, source_product_id = self.create_master_and_source()

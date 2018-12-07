@@ -244,8 +244,6 @@ class WineComSpider(AbstractSpider):
         wine_types = self.get_wine_types(response)
         step = 25
         for (wine_type, wines_total, wine_filter) in wine_types:
-            if wines_total >= 2000:
-                wines_total = 2000
             items_scraped = 0
             url = wine_filter
             if wines_total % step or wines_total < step:
