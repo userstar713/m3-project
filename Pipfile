@@ -18,7 +18,6 @@ requests = "*"
 celery-redbeat = "*"
 sqlalchemy = "*"
 scrapy-proxies = "*"
-tenacity = "*"
 
 [dev-packages]
 
