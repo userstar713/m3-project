@@ -95,6 +95,8 @@ class ParsedProduct(AbstractParsedProduct):
             image_link = image_link.replace(
                 'h_50,c_fit,fl_progressive',
                 'w_1080')
+        if image_link.startswith('/'):
+            image_link = image_link[1:]
         return '/'.join([BASE_URL, image_link])
 
     def get_alcohol_pct(self) -> str:

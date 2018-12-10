@@ -462,14 +462,14 @@ class ProductProcessor:
         prepared = self.prepare_process_product(self.product.name)
         upd_data = {
             'processed_name': prepared['processed'],
-            'brand_node_id': prepared['brand_node_id']
+            'brand_node_id': prepared['brand_node_id'],
+            'updated': datetime.now(),
         }
         if prepared['extra_words']:
             non_attribute_words = ' '.join(prepared['extra_words'])
             upd_data['non_attribute_words'] = non_attribute_words
             upd_data['non_attribute_words_vector'] = func.to_tsvector(
                 'english', non_attribute_words)
-            upd_data['updated'] = datetime.now()
         # logger.info("updating master_product")
         q = db.session.query(MasterProductProxy).filter_by(
             id=self.master_product_id)
