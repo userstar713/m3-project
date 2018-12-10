@@ -8,7 +8,7 @@ def init_celery(app):
     celery.conf.result_backend = app.config['CELERY_RESULT_BACKEND']
     # restarts the worker process after each task to prevent out of memory
     celery.conf.worker_concurrency = 10
-    celery.conf.worker_max_tasks_per_child = 1
+    # celery.conf.worker_max_tasks_per_child = 1
     if app.config['CELERY_EAGER']:
         celery.conf.task_always_eager = True
         celery.conf.task_eager_propagates = True
