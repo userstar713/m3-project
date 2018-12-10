@@ -138,7 +138,7 @@ class ParsedProduct(AbstractParsedProduct):
                 additional['varietals'] = value_selector.xpath(
                     'a/text()').extract()
             elif detail_name == 'Size':
-                detail_value = detail_value.replace(' mL', '')
+                detail_value = detail_value.replace('mL', '')
                 detail_value = detail_value.replace('l', '')
                 if '.' in detail_value:
                     detail_value = float(detail_value) * 100
