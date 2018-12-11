@@ -12,7 +12,7 @@ from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 
-BASE_URL = 'https://winelibrary.com'
+BASE_URL = 'https://www.totalwine.com'
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -210,16 +210,16 @@ class ParsedProduct(AbstractParsedProduct):
         return qty and int(qty) or max_qty and int(max_qty)
 
 
-class WineLibrarySpider(AbstractSpider):
+class TotalWineSpider(AbstractSpider):
     """'Spider' which is getting data from winelibrary.com"""
 
-    name = 'wine_library'
+    name = 'totalwine'
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
-            f'{BASE_URL}/sign_in',
+            f'{BASE_URL}/login',
             callback=self.login
         )
 
@@ -227,62 +227,87 @@ class WineLibrarySpider(AbstractSpider):
         pass
 
     def login(self, response: Response) -> Iterator[Dict]:
-        token_path = response.xpath(
-            '//form[@id="sessionform"]'
-            '//input[@name="authenticity_token"]/@value')
-        token = token_path[0].extract()
-        return FormRequest.from_response(
-            response,
-            formxpath='//form[@id="sessionform"]',
-            formdata={'user_wine_library_detail[email]': self.LOGIN,
-                      'user_wine_library_detail[password]': self.PASSWORD,
-                      'user_wine_library_detail[remember_me]': '0',
-                      'authenticity_token': token,
-                      },
-            callback=self.parse_wine_types
+        # from scrapy.shell import inspect_response
+        # inspect_response(response, self)
+        csrf_token = response.xpath(
+            '//input[@id="CSRFToken"]/@value'
+        ).extract_first()
+        cookie = (
+            '"agePresent|Sacramento (Arden), CA|/events/dec-2018/'
+            'california/sacramento-arden?selectstore=true|Anonymous'
+            f'|0|geoLocationUnidentified||{csrf_token}|"')
+        cookies = {'cacheCookie': cookie,
+                   'age': 'present'}
+        headers = {
+           'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
+        }
+        yield Request(
+            f'{BASE_URL}/wine/c/c0020?tab=fullcatalog&storeclear=true&viewall=true',
+            headers=headers,
+            cookies=cookies,
+            callback=self.get_listpages
         )
 
-    def is_not_logged(self, response):
-        return "My Account" not in response.body.decode('utf-8')
+    def get_wine_types(self, response: Response) -> list:
+        res = []
+        rows = response.xpath(
+            '//li[@class="act"]'
+        )
+        for row in rows:
+            wine = row.xpath(
+                'a/span[@class="checkStyle"]/label/text()'
+            ).extract_first()
+            if not wine:
+                continue
+            wine_type = ' '.join(wine.split()[:-1])
+            wine_type = wine_type.replace(' Wine', '')
+            if 'Dessert' in wine_type:
+                wine_type = 'Dessert'
+            elif 'Sparkling' in wine_type:
+                wine_type = 'Sparkling'
+            elif 'Rose' in wine_type:
+                wine_type = 'Rose'
+            allowed_wines = ('Red', 'Rose', 'White', 'Sparkling', 'Dessert')
+            if wine_type not in allowed_wines:
+                continue
 
-    def get_listpages(self, response: Response) -> Iterator[Dict]:
-        total_pages_link = response.xpath(
-            '//li[@class="page-num last"]/a/@href').extract()[0]
-        wine_filter = '/search?lpass=1&page='
-        total_pages = int(total_pages_link.replace(
-            wine_filter, ''))
-        for page_num in range(1, total_pages + 1):
-            yield Request(
-                f'{BASE_URL}{wine_filter}{page_num}',
-                callback=self.parse_listpage,
-            )
+            wines_total = wine.split()[-1][1:-1]
+            wines_total = int(wines_total)
+            wine_filter = row.xpath(
+                'a/@data-href').extract_first()
+            res.append((wine_type, wines_total, wine_filter))
+        return res
+
+    def is_not_logged(self, response):
+        pass
 
     def parse_wine_types(self, response: Response) -> Iterator[Dict]:
-        if self.is_not_logged(response):
-            yield
-        else:
-            wines_url = f'{BASE_URL}/search?lpass=1'
-            yield Request(wines_url,
-                          callback=self.get_listpages)
+        pass
 
-    def parse_listpage(self, response: Response) -> Iterator[Dict]:
+    def get_listpages(self, response: Response) -> Iterator[Dict]:
         """Process http response
         :param response: response from ScraPy
         :return: iterator for data
         """
-        if self.is_not_logged(response):
-            logger.exception("Login failed")
-            yield
-        else:
-            selector = '//h5[@class="h-sm search-item-title"]/a/@href'
-            rows = response.xpath(selector)
-            links = [row.extract() for row in rows]
-            for link in links:
-                absolute_url = BASE_URL + link
-                yield Request(
-                    absolute_url,
-                    callback=self.parse_product,
-                    priority=1)
+        wine_types = self.get_wine_types(response)
+        step = 24
+        for (wine_type, wines_total, wine_filter) in wine_types:
+            items_scraped = 0
+            url = wine_filter
+            if wines_total % step or wines_total < step:
+                wines_total += step
+            total_pages = int(wines_total / 25)
+            for page_num in range(1, total_pages + 1):
+                if items_scraped <= wines_total:
+                    yield Request(
+                        f'{BASE_URL}{url}/page={page_num}',
+                        callback=self.parse_listpage,
+                        meta={'wine_type': wine_type},
+                    )
+                items_scraped += step
+
+    def parse_listpage(self, response: Response) -> Iterator[Dict]:
+        pass
 
     @property
     def ignored_images(self) -> List[str]:
@@ -310,7 +335,7 @@ class WineLibrarySpider(AbstractSpider):
 def get_data(tmp_file: IO) -> None:
     settings = get_spider_settings(tmp_file)
     process = CrawlerProcess(settings)
-    process.crawl(WineLibrarySpider)
+    process.crawl(TotalWineSpider)
     process.start()
 
 
