@@ -39,7 +39,8 @@ class AbstractParsedProduct(ABC):
         res = db.session.execute(t, params={'name': name}).scalar()
         return res or name
 
-    def clean(self, s):
+    @staticmethod
+    def clean(s):
         return s.replace('\r', '').replace('\n', '').strip()
 
     def get_url(self):
