@@ -66,7 +66,7 @@ class ParsedProduct(AbstractParsedProduct):
             price = self.r.xpath(
                 '//div[@id="edlpPrice"]/text()'
             ).extract_first()
-        price = price.replace('$', '').replace(',', '')
+        price = price and price.replace('$', '').replace(',', '') or 0
         try:
             float_price = float(price)
         except ValueError:
@@ -147,10 +147,17 @@ class TotalWineSpider(AbstractSpider):
     PASSWORD = "ilovewine1B"
 
     def start_requests(self) -> Iterator[Dict]:
+        yield Request('http://checkip.dyndns.org/', callback=self.check_ip)
         yield Request(
             f'{BASE_URL}/login',
             callback=self.login
         )
+
+    def check_ip(self, response):
+        pub_ip = response.xpath(
+            '//body/text()').re(r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}'
+        )[0]
+        logger.info('MY IP IS %s', pub_ip)
 
     def before_login(self):
         pass
@@ -163,15 +170,16 @@ class TotalWineSpider(AbstractSpider):
         ).extract_first()
         cookie = (
             '"agePresent|Sacramento (Arden), CA|/events/dec-2018/'
-            'california/sacramento-arden?selectstore=true|Anonymous'
+            'california/sacramento-arden|Anonymous'
             f'|0|geoLocationUnidentified||{csrf_token}|"')
         cookies = {'cacheCookie': cookie,
-                   'age': 'present'}
+                   'age': 'present',
+                   }
         headers = {
            'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
         }
         yield Request(
-            f'{BASE_URL}/wine/c/c0020?volume=standard-750-ml&tab=fullcatalog&storeclear=true&viewall=true',
+            f'{BASE_URL}/wine/c/c0020?volume=standard-750-ml&storeclear=true&viewall=true',
             headers=headers,
             cookies=cookies,
             callback=self.get_listpages
@@ -180,7 +188,7 @@ class TotalWineSpider(AbstractSpider):
     def get_wine_types(self, response: Response) -> list:
         res = []
         rows = response.xpath(
-            '//li[@class="act"]'
+            '//li[3]/div/ul/li'
         )
         for row in rows:
             wine = row.xpath(
@@ -235,7 +243,6 @@ class TotalWineSpider(AbstractSpider):
                         meta={'wine_type': wine_type},
                     )
                 items_scraped += step
-                break  # TODO REMOVE ME
 
     def parse_listpage(self, response: Response) -> Iterator[Dict]:
         """Process http response
@@ -284,7 +291,7 @@ class TotalWineSpider(AbstractSpider):
 
     @property
     def ignored_images(self) -> List[str]:
-        return []
+        return ['8962178744350.png']
 
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
