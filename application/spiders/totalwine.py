@@ -339,6 +339,6 @@ if __name__ == '__main__':
     app = create_app()
     with app.app_context():
         current_path = os.getcwd()
-        file_name = os.path.join(current_path, 'winelibrary.txt')
+        file_name = os.path.join(current_path, 'totalwine.txt')
         with open(file_name, 'w') as out_file:
             get_data(out_file)
