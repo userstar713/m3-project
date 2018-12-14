@@ -1,7 +1,9 @@
+import json
 import re
 
 from typing import Iterator, Dict, IO, List
 
+from inline_requests import inline_requests
 from scrapy import FormRequest
 from scrapy.http.request import Request
 from scrapy.http.response import Response
@@ -13,6 +15,14 @@ from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 
 BASE_URL = 'https://www.totalwine.com'
+REVIEWS_URL = (
+    'https://api.bazaarvoice.com/data/batch.json?'
+    'passkey=caXf20wfT6xLqTTQsMoGuj0lZGIdLvCKtusCWAIn0zU9E&'
+    'apiversion=5.5&&resource.q0=reviews&filter.q0=isratingsonly:eq:false'
+    '&filter.q0=productid:eq:{0}&filter.q0=contentlocale:eq:en_US&'
+    'stats.q0=reviews&filteredstats.q0=reviews&include.q0=authors,products,'
+    'comments&filter_reviews.q0=contentlocale:eq:en_US&filter_reviewcomments'
+    '.q0=contentlocale:eq:en_US&filter_comments.q0=contentlocale:eq:en_US')
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -99,34 +109,30 @@ class ParsedProduct(AbstractParsedProduct):
         chars = filter(bool, [style, taste, body])
         characteristics = self.clean(', '.join(chars))
         additional = {
-            'varietals': [varietal],
-            'region': region,
+            'varietals': [self.clean(varietal)],
+            'region': self.clean(region),
             'characteristics': characteristics,
         }
         return additional
 
     def get_bottle_size(self) -> int:
-        size = self.r.xpath(
-            '//h2[contains(@class,"productSubTitle")]/text()'
-        ).extract_first()
-        size = size.replace('ml', '')
-        size = int(size)
-        return size
+        # We filtered wines to show 750 mL only
+        return 750
 
     def get_reviews(self) -> list:
+        """Reviews for totalwine.com are loaded with XHR request from the
+        https://api.bazaarvoice.com. We made similar request and put it's
+        result into `request.meta['reviews_json']`"""
         reviews = []
-        review_rows = self.r.xpath('//li[@itemprop="review"]')
-        for row in review_rows:
-            score = row.xpath(
-                'div[2]/div/div/div/div/div/span/meta[@itemprop="ratingValue"]/@content'
-            ).extract_first()
+        reviews_json = self.r.meta['reviews_json']
+        review_results = reviews_json['BatchedResults']['q0']['Results']
+        for review_result in review_results:
+            score = review_result['Rating']
             score *= 20
             score_str = str(score)
-            reviewer_name = row.xpath(
-                '//div[1]/div/div/div/div/button/h3/text()').extract_first()
-            content = self.r.xpath(
-                'div[2]/div/div/div[2]/div/div/div/p/text()'
-            ).extract_first()
+            reviewer_name = review_result['UserNickname']
+            content = (review_result['ReviewText'] or
+                       review_result['Title'] or '')
             content = self.clean(content)
             reviews.append({'reviewer_name': reviewer_name,
                             'score_num': score,
@@ -136,6 +142,7 @@ class ParsedProduct(AbstractParsedProduct):
         return reviews
 
     def get_qoh(self) -> int:
+        # TODO qoh is not present on the web page
         return 100
 
 
@@ -244,6 +251,7 @@ class TotalWineSpider(AbstractSpider):
                     )
                 items_scraped += step
 
+    @inline_requests
     def parse_listpage(self, response: Response) -> Iterator[Dict]:
         """Process http response
         :param response: response from ScraPy
@@ -283,10 +291,16 @@ class TotalWineSpider(AbstractSpider):
                         yield self.parse_list_product(response, row)
             for link in links:
                 absolute_url = BASE_URL + link
+                product_id = re.findall(r'\d+', link)[0]
+                reviews_url = REVIEWS_URL.format(product_id)
+                reviews_response = yield Request(reviews_url)
+                reviews_json = json.loads(
+                    reviews_response.body_as_unicode())
                 yield Request(
                     absolute_url,
                     callback=self.parse_product,
-                    meta={'wine_type': response.meta.get('wine_type')},
+                    meta={'wine_type': response.meta.get('wine_type'),
+                          'reviews_json': reviews_json},
                     priority=1)
 
     @property
