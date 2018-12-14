@@ -18,6 +18,7 @@ requests = "*"
 celery-redbeat = "*"
 sqlalchemy = "*"
 scrapy-proxies = "*"
+scrapy-inline-requests = "*"
 
 [dev-packages]
 

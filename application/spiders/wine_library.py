@@ -1,4 +1,3 @@
-import logging
 import re
 
 from typing import Iterator, Dict, IO, List
@@ -12,7 +11,6 @@ from application.logging import logger
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
-from application.spiders.base.wine_item import WineItem
 
 BASE_URL = 'https://winelibrary.com'
 

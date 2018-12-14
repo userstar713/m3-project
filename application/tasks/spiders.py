@@ -7,6 +7,7 @@ from flask import current_app
 from application.tasks.synchronization import celery
 from application.spiders import (klwines,
                                  thewineclub,
+                                 totalwine,
                                  wine_com,
                                  wine_library)
 from application.db_extension.models import db, Source
@@ -54,6 +55,8 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
         scraper = SpiderScraper(wine_com.WineComSpider)
     elif source.name == 'The wine club':
         scraper = SpiderScraper(thewineclub.TheWineClubSpider)
+    elif source.name == 'Total Wine':
+        scraper = SpiderScraper(totalwine.TotalWineSpider)
     else:
         raise ValueError(f'No support for source with name {source.name}')
     data = scraper.run(full=full)
