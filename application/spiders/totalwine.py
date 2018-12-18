@@ -1,9 +1,8 @@
-import json
 import re
+import requests
 
 from typing import Iterator, Dict, IO, List
 
-from inline_requests import inline_requests
 from scrapy import FormRequest
 from scrapy.http.request import Request
 from scrapy.http.response import Response
@@ -251,7 +250,6 @@ class TotalWineSpider(AbstractSpider):
                     )
                 items_scraped += step
 
-    @inline_requests
     def parse_listpage(self, response: Response) -> Iterator[Dict]:
         """Process http response
         :param response: response from ScraPy
@@ -293,9 +291,7 @@ class TotalWineSpider(AbstractSpider):
                 absolute_url = BASE_URL + link
                 product_id = re.findall(r'\d+', link)[0]
                 reviews_url = REVIEWS_URL.format(product_id)
-                reviews_response = yield Request(reviews_url)
-                reviews_json = json.loads(
-                    reviews_response.body_as_unicode())
+                reviews_json = requests.get(reviews_url).json()
                 yield Request(
                     absolute_url,
                     callback=self.parse_product,

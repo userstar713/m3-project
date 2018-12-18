@@ -37,7 +37,7 @@ def get_spider_settings(tmp_file: io.IOBase, full_scrape=True) -> dict:
                 'scrapy.downloadermiddlewares.httpproxy.HttpProxyMiddleware': 110,
             },
             'RETRY_TIMES': 10,
-            'RETRY_HTTP_CODES': [500, 503, 504, 400, 403, 404, 408],
+            'RETRY_HTTP_CODES': [500, 502, 503, 504, 400, 403, 404, 408],
             'PROXY_MODE': 2,
             'CUSTOM_PROXY': PROXY_URL,
         })

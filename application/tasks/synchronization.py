@@ -50,7 +50,9 @@ def execute_pipeline_task(_, source_id: int) -> None:
 
 @celery.task(bind=True)
 def clean_sources_task(_, source_id: int) -> None:
-    clean_sources(source_id)
+    data_exists = bool(get_products_from_redis(source_id))
+    if data_exists:
+        clean_sources(source_id)
 
 
 @celery.task(bind=True)
