@@ -4,12 +4,14 @@ import re
 from typing import Iterator, Dict, List, IO
 
 from scrapy import FormRequest, Selector
+from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
+from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 
 
@@ -203,6 +205,7 @@ class KLWinesSpider(AbstractSpider):
     name = 'klwines'
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
+    filter_pipeline = "application.spiders.klwines.FilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -337,12 +340,24 @@ class KLWinesSpider(AbstractSpider):
     def get_list_product_dict(self, response: Response):
         return ParsedListPageProduct(response).as_dict()
 
-    def check_prearrival(self, product: dict, response: Response):
-        return self.is_prearrival(product['name'])
 
-    def check_multipack(self, product: dict, response: Response) -> bool:
+class FilterPipeline(BaseFilterPipeline):
+
+    def process_item(self, item, spider):
+        res = super().process_item(item, spider)
+        self.check_multipack(item)
+        self.check_prearrival(item)
+        return res
+
+    def check_prearrival(self, item: dict):
+        if self.is_prearrival(item['name']):
+            raise DropItem(f'Ignoring pre-arrival: {item["name"]}')
+
+    def check_multipack(self, item: dict):
         regex = re.compile('.*(pack in OWC).*', re.IGNORECASE)
-        return bool(regex.match(product['name']))
+        if not bool(regex.match(item['name'])):
+            raise DropItem(f'Ignoring multipack product: {item["name"]}')
+
 
 def get_data(tmp_file: IO) -> None:
     settings = get_spider_settings(tmp_file)
