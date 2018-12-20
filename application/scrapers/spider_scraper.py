@@ -20,7 +20,7 @@ from application.spiders.base.abstracts.spider import (
 
 def get_spider_settings(tmp_file: io.IOBase, spider: Spider, full_scrape=True) -> dict:
     settings = {
-        spider.filter_pipeline: 300,
+        'ITEM_PIPELINES': {spider.filter_pipeline: 300},
         'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': COOKIES_DEBUG,
         'FEED_FORMAT': 'jsonlines',

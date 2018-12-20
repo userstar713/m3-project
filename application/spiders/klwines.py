@@ -1,9 +1,9 @@
 import logging
 import re
 
-from typing import Iterator, Dict, List, IO
+from typing import Iterator, Dict, IO
 
-from scrapy import FormRequest, Selector
+from scrapy import FormRequest
 from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
@@ -134,13 +134,13 @@ class ParsedProduct(AbstractParsedProduct):
 
     def get_bottle_size(self) -> int:
         bottle_size = 750
-        if "187 ml" in self.name:
+        if re.match(r'187\s*ml', self.name, re.IGNORECASE):
             bottle_size = 187
-        elif "375 ml" in self.name:
+        elif re.match(r'375\s*ml', self.name, re.IGNORECASE):
             bottle_size = 375
-        elif "1.5 l" in self.name:
+        elif re.match(r'1.5\s*l', self.name, re.IGNORECASE):
             bottle_size = 1500
-        elif "3.0 l" in self.name:
+        elif re.match(r'3.0\s*l', self.name, re.IGNORECASE):
             bottle_size = 3000
         return bottle_size
 
@@ -160,29 +160,21 @@ class ParsedProduct(AbstractParsedProduct):
             if reviewer_name:
                 reviewer_name = self.match_reviewer_name(reviewer_name)
 
-            if 'K&L' in reviewer_name:
-                reviews.append({
-                    'reviewer_name': 'K&LNotes',
-                    'score_num': None,
-                    'score_str': None,
-                    'content': content
-                })
+            raw_points = rp.xpath('span/text()')
+            if raw_points:
+                score = self.clean(
+                    raw_points[0].extract()
+                ).replace('points', '').strip()
+                if '-' in score:
+                    score = score.split('-')[-1]
             else:
-                raw_points = rp.xpath('span/text()')
-                if raw_points:
-                    score = self.clean(
-                        raw_points[0].extract()
-                    ).replace('points', '').strip()
-                    if '-' in score:
-                        score = score.split('-')[-1]
-                else:
-                    score = None
-                reviews.append({
-                    'reviewer_name': reviewer_name,
-                    'score_num': score and int(score),
-                    'score_str': score,
-                    'content': content
-                })
+                score = None
+            reviews.append({
+                'reviewer_name': reviewer_name,
+                'score_num': score and int(score),
+                'score_str': score,
+                'content': content
+            })
         return reviews
 
     def get_qoh(self) -> int:
@@ -279,7 +271,12 @@ class KLWinesSpider(AbstractSpider):
             self.logger.exception("Login failed")
             yield
         else:
-            wines_url = f'{BASE_URL}/Wines'
+            # url contains filters 750ml+In Stock(Not Pre-arrival)
+            url = ('Products?&filters=sv2_30$eq$(227)$True$w$or,30$eq$(230)$'
+                   'True$$.or,30$eq$(225)$True$$.or,30$eq$(229)$True$$.or,30'
+                   '$eq$(226)$True$$.or,30$eq$(228)$True$$!243!42$eq$0$True$'
+                   'ff-42-0--$&limit=50&offset=0&orderBy=&searchText=')
+            wines_url = f'{BASE_URL}/{url}'
             yield Request(wines_url,
                           callback=self.get_listpages)
 
@@ -321,19 +318,6 @@ class KLWinesSpider(AbstractSpider):
                     meta={'wine_type': response.meta.get('wine_type')},
                     priority=1)
 
-    @property
-    def ignored_images(self) -> List[str]:
-        return ['genericred-l.jpg',
-                'genericred-xl.jpg',
-                'shiner_red_burgundy_l.jpg',
-                'shiner_white_l.jpg',
-                'shiner_white_burgundy_l.jpg',
-                'shiner_riesling_l.jpg',
-                'shiner_sparkling_l.jpg',
-                'shiner_sauternes_l.jpg',
-                'shiner_port_l.jpg',
-                ]
-
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
@@ -343,24 +327,25 @@ class KLWinesSpider(AbstractSpider):
 
 class FilterPipeline(BaseFilterPipeline):
 
-    def process_item(self, item, spider):
-        res = super().process_item(item, spider)
-        self.check_multipack(item)
-        self.check_prearrival(item)
-        return res
+    IGNORED_IMAGES = [
+        'genericred-l.jpg',
+        'genericred-xl.jpg',
+        'shiner_red_burgundy_l.jpg',
+        'shiner_white_l.jpg',
+        'shiner_white_burgundy_l.jpg',
+        'shiner_riesling_l.jpg',
+        'shiner_sparkling_l.jpg',
+        'shiner_sauternes_l.jpg',
+        'shiner_port_l.jpg',
+    ]
 
-    def check_prearrival(self, item: dict):
-        if self.is_prearrival(item['name']):
-            raise DropItem(f'Ignoring pre-arrival: {item["name"]}')
-
-    def check_multipack(self, item: dict):
+    def _check_multipack(self, item: dict):
         regex = re.compile('.*(pack in OWC).*', re.IGNORECASE)
-        if not bool(regex.match(item['name'])):
+        if bool(regex.match(item['name'])):
             raise DropItem(f'Ignoring multipack product: {item["name"]}')
 
-
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file)
+    settings = get_spider_settings(tmp_file, KLWinesSpider)
     process = CrawlerProcess(settings)
     process.crawl(KLWinesSpider)
     process.start()
