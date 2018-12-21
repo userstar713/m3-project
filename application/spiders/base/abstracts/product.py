@@ -85,9 +85,8 @@ class AbstractParsedProduct(ABC):
     def get_additional(self):
         pass
 
-    @abstractmethod
     def get_bottle_size(self):
-        pass
+        return 750
 
     @abstractmethod
     def get_reviews(self):

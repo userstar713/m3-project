@@ -132,18 +132,6 @@ class ParsedProduct(AbstractParsedProduct):
                     additional['region'] = value
         return additional
 
-    def get_bottle_size(self) -> int:
-        bottle_size = 750
-        if re.match(r'187\s*ml', self.name, re.IGNORECASE):
-            bottle_size = 187
-        elif re.match(r'375\s*ml', self.name, re.IGNORECASE):
-            bottle_size = 375
-        elif re.match(r'1.5\s*l', self.name, re.IGNORECASE):
-            bottle_size = 1500
-        elif re.match(r'3.0\s*l', self.name, re.IGNORECASE):
-            bottle_size = 3000
-        return bottle_size
-
     def get_reviews(self) -> list:
         reviews = []
         reviewer_point = self.r.xpath(

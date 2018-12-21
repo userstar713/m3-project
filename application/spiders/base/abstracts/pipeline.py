@@ -34,7 +34,7 @@ class BaseFilterPipeline(ABC):
     def _check_product_image(self, item: dict):
         image = item['image']
         if not image or 'default_bottle' in image:
-            raise DropItem(f'Skipping product with image: {item["name"]}')
+            raise DropItem(f'Skipping product with ignored image: {item["name"]}')
         relative_image = image.split('/')[-1]
         if relative_image in self.IGNORED_IMAGES:
             raise DropItem(f'Skipping product with ignored image: {item["name"]}')

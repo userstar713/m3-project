@@ -3,6 +3,7 @@ import re
 from typing import Iterator, Dict, IO, List
 
 from scrapy import FormRequest
+from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
@@ -10,9 +11,14 @@ from scrapy.crawler import CrawlerProcess
 from application.logging import logger
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
+from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 
 BASE_URL = 'https://winelibrary.com'
+# BASE FILTER includes filters: Library Pass Items, 750 ML, Non-Presale
+# Red, White, Rose wine types
+BASE_FILTER = ('/search?search=&lpass=1&color[]=Red&color[]=White&color[]='
+               'Rose&size[]=750ML&presale[]=Non-Presale')
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -36,6 +42,8 @@ class ParsedProduct(AbstractParsedProduct):
             "//p[@itemprop='description']/text()"
         ).extract_first()
         desc = desc and self.clean(desc) if desc else ''
+        if desc.startswith('"') and desc.endswith('"'):
+            desc = desc[1:-1]
         features = self.r.xpath(
             '//td[text()="Features"]/following-sibling::td[1]/text()'
         ).extract_first()
@@ -189,9 +197,11 @@ class ParsedProduct(AbstractParsedProduct):
             if reviewer_name:
                 reviewer_name = self.match_reviewer_name(reviewer_name)
 
-            content = review_rows[i + 1].xpath('text()').extract() or ''
+            content = review_rows[i + 1].xpath('text()').extract() or ['']
             if content:
                 content = self.clean(content[0])
+                if content.startswith('"') and content.endswith('"'):
+                    content = content[1:-1]
             if score_str:
                 score_str = ''.join(score_str.split('-')[-1])
                 score_str = score_str.replace('+', '')
@@ -216,6 +226,8 @@ class WineLibrarySpider(AbstractSpider):
     name = 'wine_library'
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
+    filter_pipeline = "application.spiders.wine_library.FilterPipeline"
+    
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -248,12 +260,11 @@ class WineLibrarySpider(AbstractSpider):
     def get_listpages(self, response: Response) -> Iterator[Dict]:
         total_pages_link = response.xpath(
             '//li[@class="page-num last"]/a/@href').extract()[0]
-        wine_filter = '/search?lpass=1&page='
-        total_pages = int(total_pages_link.replace(
-            wine_filter, ''))
+        total = re.findall(r'page=\d*', total_pages_link)[0]
+        total_pages = int(total.replace('page=', ''))
         for page_num in range(1, total_pages + 1):
             yield Request(
-                f'{BASE_URL}{wine_filter}{page_num}',
+                f'{BASE_URL}{BASE_FILTER}&page={page_num}',
                 callback=self.parse_listpage,
             )
 
@@ -261,7 +272,7 @@ class WineLibrarySpider(AbstractSpider):
         if self.is_not_logged(response):
             yield
         else:
-            wines_url = f'{BASE_URL}/search?lpass=1'
+            wines_url = f'{BASE_URL}{BASE_FILTER}'
             yield Request(wines_url,
                           callback=self.get_listpages)
 
@@ -307,8 +318,18 @@ class WineLibrarySpider(AbstractSpider):
         return size_label == 'each'
 
 
+class FilterPipeline(BaseFilterPipeline):
+
+    IGNORED_IMAGES = []
+
+    def _check_multipack(self, item: dict):
+        regex = re.compile(r'.*(\d Pack).*', re.IGNORECASE)
+        if bool(regex.match(item['name'])):
+            raise DropItem(f'Ignoring multipack product: {item["name"]}')
+
+
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file)
+    settings = get_spider_settings(tmp_file, WineLibrarySpider)
     process = CrawlerProcess(settings)
     process.crawl(WineLibrarySpider)
     process.start()

@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from typing import Iterator, Dict
 from scrapy.http.response import Response
 from scrapy.spiders import Spider
@@ -11,6 +11,10 @@ DOWNLOADER_CLIENTCONTEXTFACTORY = ('application.spiders.base.cipher_factory.'
 
 
 class AbstractSpider(ABC, Spider):
+
+    @abstractproperty
+    def filter_pipeline(self):
+        pass
 
     @abstractmethod
     def start_requests(self):

@@ -3,6 +3,7 @@ import re
 from typing import Iterator, Dict, IO, List
 
 from scrapy import FormRequest
+from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
@@ -10,7 +11,7 @@ from scrapy.crawler import CrawlerProcess
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
 from application.spiders.base.abstracts.product import AbstractParsedProduct
-from application.spiders.base.wine_item import WineItem
+from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
 
 BASE_URL = 'https://www.wine.com'
 
@@ -122,13 +123,13 @@ class ParsedProduct(AbstractParsedProduct):
 
     def get_bottle_size(self) -> int:
         bottle_size = 750
-        if 'half-bottle' in self.name:
+        if re.match(r'half-bottle', self.name, re.IGNORECASE):
             bottle_size = 375
-        elif '500 ML' in self.name:
+        elif re.match(r'500\s*ML', self.name, re.IGNORECASE):
             bottle_size = 500
-        elif '1 Liter' in self.name:
+        elif re.match(r'1\s*Liter', self.name, re.IGNORECASE):
             bottle_size = 1000
-        elif '1.5 Liter' in self.name:
+        elif re.match(r'1.5\s*Liter', self.name, re.IGNORECASE):
             bottle_size = 1500
         return bottle_size
 
@@ -174,6 +175,7 @@ class WineComSpider(AbstractSpider):
     name = 'wine_com'
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
+    filter_pipeline = "application.spiders.wine_com.FilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -296,16 +298,18 @@ class WineComSpider(AbstractSpider):
     def get_list_product_dict(self, response: Response):
         raise NotImplementedError
 
-    def check_prearrival(self, product: dict, response: Response):
-        return self.is_prearrival(product['name'])
 
-    def check_multipack(self, product: dict, response: Response) -> bool:
-        regex = re.compile(r'.*(\d-Pack).*')
-        return bool(regex.match(product['name']))
+class FilterPipeline(BaseFilterPipeline):
 
+    IGNORED_IMAGES = []
+
+    def _check_multipack(self, item: dict):
+        regex = re.compile(r'.*(\d-Pack).*', re.IGNORECASE)
+        if bool(regex.match(item['name'])):
+            raise DropItem(f'Ignoring multipack product: {item["name"]}')
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file)
+    settings = get_spider_settings(tmp_file, WineComSpider)
     process = CrawlerProcess(settings)
     process.crawl(WineComSpider)
     process.start()
