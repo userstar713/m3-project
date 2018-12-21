@@ -11,6 +11,7 @@ from scrapy.crawler import CrawlerProcess
 from application.logging import logger
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
+from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 
 BASE_URL = 'https://www.totalwine.com'
@@ -114,10 +115,6 @@ class ParsedProduct(AbstractParsedProduct):
         }
         return additional
 
-    def get_bottle_size(self) -> int:
-        # We filtered wines to show 750 mL only
-        return 750
-
     def get_reviews(self) -> list:
         """Reviews for totalwine.com are loaded with XHR request from the
         https://api.bazaarvoice.com. We made similar request and put it's
@@ -141,7 +138,18 @@ class ParsedProduct(AbstractParsedProduct):
         return reviews
 
     def get_qoh(self) -> int:
-        # TODO qoh is not present on the web page
+        unavailable = self.r.xpath(
+            '//button[@atc="product_Add to cart"]/text()'
+        ).extract_firts()
+        if unavailable in ('Unavailable',
+                           'Out of Stock'):
+            return 0
+        single = self.r.xpath(
+            'div[class*="packageDescription_"]'
+        ).extract_first()
+        if single and 'Single' not in single:
+            # Detect multipacks which will be ignored by the FilterPipeline
+            return 0
         return 100
 
 
@@ -151,6 +159,7 @@ class TotalWineSpider(AbstractSpider):
     name = 'totalwine'
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
+    filter_pipeline = "application.spiders.totalwine.FilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request('http://checkip.dyndns.org/', callback=self.check_ip)
@@ -315,15 +324,18 @@ class TotalWineSpider(AbstractSpider):
         ).extract_first() or ''
         return self.is_prearrival(text)
 
-    def check_multipack(self, product: dict, response: Response):
-        size_label = response.xpath(
-            '//td[text()="Size"]/following-sibling::td[1]/text()'
-        ).extract_first()
-        return size_label == 'each'
+
+class FilterPipeline(BaseFilterPipeline):
+
+    IGNORED_IMAGES = ['8962178744350.png']
+
+    def _check_multipack(self, item: dict):
+        # Multipacks are detected on the scrape stage (set qoh=0)
+        pass
 
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file)
+    settings = get_spider_settings(tmp_file, TotalWineSpider)
     process = CrawlerProcess(settings)
     process.crawl(TotalWineSpider)
     process.start()
