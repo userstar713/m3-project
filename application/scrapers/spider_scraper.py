@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 from typing import List
 from scrapy import signals
 from scrapy.crawler import Crawler
+from scrapy.spiders import Spider
 
 from twisted.internet import reactor
 from application.config import (SCRAPER_PAGES_LIMIT,
@@ -17,8 +18,9 @@ from application.spiders.base.abstracts.spider import (
     DOWNLOADER_CLIENTCONTEXTFACTORY)
 
 
-def get_spider_settings(tmp_file: io.IOBase, full_scrape=True) -> dict:
+def get_spider_settings(tmp_file: io.IOBase, spider: Spider, full_scrape=True) -> dict:
     settings = {
+        'ITEM_PIPELINES': {spider.filter_pipeline: 300},
         'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': COOKIES_DEBUG,
         'FEED_FORMAT': 'jsonlines',
@@ -47,7 +49,7 @@ def get_spider_settings(tmp_file: io.IOBase, full_scrape=True) -> dict:
 class CrawlerScript(Process):
     def __init__(self, tmp_file, spider, full):
         Process.__init__(self)
-        settings = get_spider_settings(tmp_file, full_scrape=full)
+        settings = get_spider_settings(tmp_file, spider, full_scrape=full)
         self.crawler = Crawler(spider, settings)
         self.crawler.signals.connect(
             reactor.stop, signal=signals.spider_closed)

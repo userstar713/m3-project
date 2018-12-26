@@ -3,12 +3,14 @@ import re
 from typing import Iterator, Dict, IO, List
 
 from scrapy import FormRequest
+from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
+from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
 from application.spiders.base.abstracts.product import AbstractParsedProduct
 
 
@@ -47,7 +49,7 @@ class ParsedProduct(AbstractParsedProduct):
                 '//div[@id="tastingnotes"]/text()'
             ).getall()
             description = self.clean(' '.join(description))
-        return description
+        return self.clean(description)
 
     def get_sku(self) -> str:
         sku = self.r.xpath(
@@ -111,7 +113,7 @@ class ParsedProduct(AbstractParsedProduct):
     def get_varietals(self) -> list:
         return self.r.xpath(
             '//span[text()="Grape Varietal:"]/following::span[1]/a/text()'
-        ).extract_first()
+        ).extract()
 
     def get_region(self) -> str:
         selector = self.r.xpath(
@@ -132,17 +134,6 @@ class ParsedProduct(AbstractParsedProduct):
             'bottle_size': 0,
         }
         return additional
-
-    def get_bottle_size(self) -> int:
-        size = self.r.xpath(
-            '//span[@class="bottlesize"]/text()'
-        ).extract_first() or ''
-        if 'ML' in size:
-            size = int(size.replace('ML', ''))
-        elif 'L' in size:
-            size = size.replace('L', '')
-            size = int(float(size) * 1000)
-        return size
 
     def get_reviews(self) -> list:
         reviews = []
@@ -177,7 +168,7 @@ class ParsedProduct(AbstractParsedProduct):
 
         qoh = self.r.xpath(
             '//span[@class="cartQtyLeft"]/text()'
-        ).extract_first()
+        ).extract_first() or 0
         qoh = re.findall(r'\d+', qoh)
         return qoh and int(qoh[0])
 
@@ -188,6 +179,7 @@ class TheWineClubSpider(AbstractSpider):
     name = 'thewineclub'
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
+    filter_pipeline = "application.spiders.thewineclub.FilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -271,7 +263,7 @@ class TheWineClubSpider(AbstractSpider):
             'attributes2': '0',
             'sel_producers': '0',
             'sel_vintage': '',
-            'sel_size': '0',
+            'sel_size': '750',  # 750 mL only
             'rateselect': '',
             'price_range': '0',
         }
@@ -314,26 +306,25 @@ class TheWineClubSpider(AbstractSpider):
                 meta={'wine_type': response.meta['wine_type']},
                 priority=1)
 
-    @property
-    def ignored_images(self) -> List[str]:
-        return ['not_available.gif']
-
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
     def get_list_product_dict(self, response: Response):
         raise NotImplementedError
 
-    def check_prearrival(self, product: dict, response: Response):
-        return self.is_prearrival(product['name'])
 
-    def check_multipack(self, product: dict, response: Response):
+class FilterPipeline(BaseFilterPipeline):
+
+    IGNORED_IMAGES = ['not_available.gif']
+
+    def _check_multipack(self, item: dict):
         regex = re.compile(r'.*(\d Pack).*', re.IGNORECASE)
-        return bool(regex.match(product['name']))
+        if bool(regex.match(item['name'])):
+            raise DropItem(f'Ignoring multipack product: {item["name"]}')
 
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file)
+    settings = get_spider_settings(tmp_file, TheWineClubSpider)
     process = CrawlerProcess(settings)
     process.crawl(TheWineClubSpider)
     process.start()
