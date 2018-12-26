@@ -1,10 +1,10 @@
+from typing import Iterator, Dict, IO, List
 import re
 import requests
 
-from typing import Iterator, Dict, IO, List
 
-from scrapy import FormRequest
 from scrapy.http.request import Request
+from scrapy.exceptions import CloseSpider
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
@@ -140,12 +140,12 @@ class ParsedProduct(AbstractParsedProduct):
     def get_qoh(self) -> int:
         unavailable = self.r.xpath(
             '//button[@atc="product_Add to cart"]/text()'
-        ).extract_firts()
+        ).extract_first()
         if unavailable in ('Unavailable',
                            'Out of Stock'):
             return 0
         single = self.r.xpath(
-            'div[class*="packageDescription_"]'
+            '//*[contains(@class, "packageDescription_")]'
         ).extract_first()
         if single and 'Single' not in single:
             # Detect multipacks which will be ignored by the FilterPipeline
@@ -229,6 +229,8 @@ class TotalWineSpider(AbstractSpider):
                 'a/@data-href').extract_first()
             wine_filter = f'{wine_filter}&pagesize=180'
             res.append((wine_type, wines_total, wine_filter))
+        if not res:
+            raise CloseSpider('Wine types not found!')
         return res
 
     def is_not_logged(self, response):
