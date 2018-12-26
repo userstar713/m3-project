@@ -65,8 +65,11 @@ class ParsedProduct(AbstractParsedProduct):
         return msrp
 
     def get_vintage(self) -> str:
-        vintage = ''
-        return vintage
+        res = ''
+        match = re.match(r'.*([1-3][0-9]{3})', self.name)
+        if match:
+            res = match.group(1)
+        return res
 
     def get_price(self) -> float:
         price = self.r.xpath(
