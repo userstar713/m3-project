@@ -65,7 +65,7 @@ class ParsedProduct(AbstractParsedProduct):
         value = self.r.xpath(
             '//span[@class="SKUInformation"]/text()'
         ).extract()[0]
-        value = value.replace('SKU ', '')
+        value = value.replace('SKU #', '')
         return value
 
     def get_name(self) -> str:
