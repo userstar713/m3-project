@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod, abstractproperty
 from typing import Iterator, Dict
+from scrapy import Selector
 from scrapy.http.response import Response
 from scrapy.spiders import Spider
 from application.spiders.base.wine_item import WineItem
@@ -51,13 +52,13 @@ class AbstractSpider(ABC, Spider):
         pass
 
     @abstractmethod
-    def get_list_product_dict(self, response: Response):
+    def get_list_product_dict(self, r: Response, s: Selector):
         pass
 
     def parse_product(self, response: Response) -> Iterator[Dict]:
         product = self.get_product_dict(response)
         return WineItem(**product)
 
-    def parse_list_product(self, r: Response, s) -> Iterator[Dict]:
-        product = self.get_list_product_dict(r)
+    def parse_list_product(self, r: Response, row: Selector) -> Iterator[Dict]:
+        product = self.get_list_product_dict(r, row)
         return WineItem(**product)

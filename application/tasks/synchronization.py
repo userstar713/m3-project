@@ -79,15 +79,22 @@ def queue_sequence(source_id: int):
 
 def start_synchronization(source_id: int, full=True) -> str:
     from .spiders import task_execute_spider
-    logger.info(f'Starting synchronization for source: {source_id}')
+    sync_type = full and 'Full' or 'Incremental'
+    logger.info(f'Starting {sync_type} synchronization for source: {source_id}')
     queue_sequence(source_id)
     # if "is_use_interim" is not set, run a full sequence (with scraping)
     # if it is set, don't run the scraper, use the data from
-    job = task_execute_spider.si(source_id, full=full)\
-        | clean_sources_task.si(source_id)\
-        | get_products_task.si(source_id)\
-        | process_product_list_task.s() \
-        | execute_pipeline_task.si(source_id)
+    if full:
+        job = task_execute_spider.si(source_id, full=full)\
+            | clean_sources_task.si(source_id)\
+            | get_products_task.si(source_id)\
+            | process_product_list_task.s() \
+            | execute_pipeline_task.si(source_id)
+    else:
+        job = task_execute_spider.si(source_id, full=full)\
+            | get_products_task.si(source_id)\
+            | process_product_list_task.s() \
+            | execute_pipeline_task.si(source_id)
     logger.info('Calling job.delay()')
     task = job.delay()
     return task.id

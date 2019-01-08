@@ -1,9 +1,11 @@
 import logging
 import re
+import urllib.parse as urlparse
 
 from typing import Iterator, Dict, IO
 
 from scrapy import FormRequest
+from scrapy import Selector
 from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
@@ -21,19 +23,28 @@ BASE_URL = 'https://www.klwines.com'
 class ParsedListPageProduct(AbstractParsedProduct):
 
     def get_sku(self):
-        pass
+        url = self.s.xpath(
+            'div/span//a[@class="add-to-cart-link"]/@href'
+        ).extract_first()
+        parsed = urlparse.urlparse(url)
+        return urlparse.parse_qs(parsed.query)['sku'][0]
 
     def get_name(self) -> str:
-        return self.s.xpath(
-            'div[@class="result-desc"]/a/text()'
+        name = self.s.xpath(
+            'div[@class="productImg"]/a/@title'
         ).extract_first()
+        return self.clean(name or '')
 
-    def get_vintage(self):
-        pass
+    def get_vintage(self) -> str:
+        res = ''
+        match = re.match(r'.*([1-3][0-9]{3})', self.name)
+        if match:
+            res = match.group(1)
+        return res
 
     def get_price(self) -> float:
         s = self.clean(self.s.xpath(
-            'div[@class="result-info"]/span/span/span/strong/text()'
+            'div/span[@class="price"]/span/span/strong/text()'
         ).extract_first())
         s = s.replace('$', '').replace(',', '')
         try:
@@ -44,13 +55,15 @@ class ParsedListPageProduct(AbstractParsedProduct):
             return float_s
 
     def get_image(self):
-        pass
+        return self.s.xpath(
+            'div[@class="productImg"]/a/img/@src'
+        ).extract_first()
 
     def get_additional(self):
-        return {}
-
-    def get_bottle_size(self):
-        pass
+        description = self.s.xpath(
+            'div[@class="result-desc"]/p/span/text()'
+        ).extract_first()
+        return {'description': self.clean(description)}
 
     def get_qoh(self):
         pass
@@ -58,6 +71,11 @@ class ParsedListPageProduct(AbstractParsedProduct):
     def get_reviews(self):
         pass
 
+    def get_url(self):
+        relative_url = self.s.xpath(
+            'div[@class="result-desc"]/a/@href'
+        ).extract_first()
+        return f'{BASE_URL}{relative_url}'
 
 class ParsedProduct(AbstractParsedProduct):
 
@@ -309,8 +327,8 @@ class KLWinesSpider(AbstractSpider):
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
-    def get_list_product_dict(self, response: Response):
-        return ParsedListPageProduct(response).as_dict()
+    def get_list_product_dict(self, r: Response, s: Selector):
+        return ParsedListPageProduct(r, s).as_dict()
 
 
 class FilterPipeline(BaseFilterPipeline):
@@ -333,7 +351,7 @@ class FilterPipeline(BaseFilterPipeline):
             raise DropItem(f'Ignoring multipack product: {item["name"]}')
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, KLWinesSpider)
+    settings = get_spider_settings(tmp_file, KLWinesSpider, full_scrape=False)
     process = CrawlerProcess(settings)
     process.crawl(KLWinesSpider)
     process.start()
