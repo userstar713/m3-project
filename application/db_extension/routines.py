@@ -259,28 +259,50 @@ def pipe_aggregate(source_id: int, sequence_id: int) -> List:
     return result
 
 
+def assign_to_products(
+        f_name: str,
+        source_id: int,
+        sequence_id: int,
+        category_id: Optional[int] = None,
+        is_partial: bool = False):
+    q = ('SELECT * '
+         f'FROM public.{f_name}('
+         '    :category_id,'
+         '    :source_id,'
+         '    :sequence_id,'
+         '    :is_partial)'
+         )
+    if category_id is None:
+        category_id = get_default_category_id()
+    db.session.execute(
+        q,
+        {'category_id': category_id,
+         'source_id': source_id,
+         'sequence_id': sequence_id,
+         'is_partial': is_partial}
+    ).first()
+    db.session.commit()
+
+
 def assign_prototypes_to_products(
         source_id: int,
         sequence_id: int,
         category_id: Optional[int] = None,
-        is_partial: bool = False
-    ) -> None:
-    q = """
-        SELECT * 
-        FROM public.assign_prototypes_to_products(
-            :category_id,
-            :source_id,
-            :sequence_id, 
-            :is_partial
-        )
-    """
-    if category_id is None:
-        category_id = get_default_category_id()
-    db.session.execute(q,
-                       {
-                           'category_id': category_id,
-                           'source_id': source_id,
-                           'sequence_id': sequence_id,
-                           'is_partial': is_partial
-                       }).first()
-    db.session.commit()
+        is_partial: bool = False):
+    assign_to_products('assign_prototypes_to_products',
+                       source_id,
+                       sequence_id,
+                       category_id,
+                       is_partial)
+
+
+def assign_themes_to_products(
+        source_id: int,
+        sequence_id: int,
+        category_id: Optional[int] = None,
+        is_partial: bool = False):
+    assign_to_products('assign_themes_to_products',
+                       source_id,
+                       sequence_id,
+                       category_id,
+                       is_partial)
