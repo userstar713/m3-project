@@ -60,7 +60,11 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
     else:
         raise ValueError(f'No support for source with name {source.name}')
     data = scraper.run(full=full)
+    if full:
+        cache_key = f'spider::{source_id}::data'
+    else:
+        cache_key = f'spider::{source_id}::data::inc'
     if data:
-        cache.set(f'spider::{source_id}::data',
+        cache.set(cache_key,
                   pickle.dumps(data, protocol=-1),
                   timeout=0)

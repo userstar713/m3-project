@@ -8,9 +8,8 @@ from application.db_extension.models import db
 
 class AbstractParsedProduct(ABC):
 
-    def __init__(self, r: Response, s: Selector = None) -> None:
+    def __init__(self, r: Response) -> None:
         self.r = r
-        self.s = s
         self.name = self.get_name()
         self.additional = self.get_additional()
         self.result = {
@@ -98,3 +97,38 @@ class AbstractParsedProduct(ABC):
 
     def as_dict(self) -> Dict:
         return self.result
+
+
+class AbstractListProduct(ABC):
+
+    def __init__(self, s: Selector = None) -> None:
+        self.s = s
+        self.result = {
+            'name': self.get_name(),
+            'price': self.get_price(),
+            'qoh': self.get_qoh(),
+            'single_product_url': self.get_url(),
+        }
+
+    def as_dict(self) -> Dict:
+        return self.result
+
+    @staticmethod
+    def clean(s):
+        return s.replace('\r', '').replace('\n', '').strip()
+
+    @abstractmethod
+    def get_name(self):
+        pass
+
+    @abstractmethod
+    def get_price(self):
+        pass
+
+    @abstractmethod
+    def get_qoh(self):
+        pass
+
+    @abstractmethod
+    def get_url(self):
+        pass

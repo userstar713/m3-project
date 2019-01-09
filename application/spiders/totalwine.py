@@ -300,7 +300,7 @@ class TotalWineSpider(AbstractSpider):
                             )
                 else:
                     if row:
-                        yield self.parse_list_product(response, row)
+                        yield self.parse_list_product(row)
             for link in links:
                 absolute_url = BASE_URL + link
                 product_id = re.findall(r'\d+', link)[0]

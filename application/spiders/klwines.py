@@ -13,21 +13,34 @@ from scrapy.crawler import CrawlerProcess
 
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
-from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
-from application.spiders.base.abstracts.product import AbstractParsedProduct
+from application.spiders.base.abstracts.pipeline import (
+    BaseFilterPipeline,
+    BaseIncPipeline
+)
+from application.spiders.base.abstracts.product import (
+    AbstractListProduct,
+    AbstractParsedProduct
+)
 
 
 BASE_URL = 'https://www.klwines.com'
 
 
-class ParsedListPageProduct(AbstractParsedProduct):
+def get_qoh(response):
+    rows = response.xpath(
+        '//div[@class="inventory clearfix"]/div[@class="column"]//tr'
+    )
+    qoh = 0
+    for row in rows[1:]:
+        qty = AbstractListProduct.clean(
+            row.xpath('td/text()')[-1].extract()
+        )
+        qty = qty.replace('>', '').replace('<', '')
+        qoh += int(qty)
+    return qoh
 
-    def get_sku(self):
-        url = self.s.xpath(
-            'div/span//a[@class="add-to-cart-link"]/@href'
-        ).extract_first()
-        parsed = urlparse.urlparse(url)
-        return urlparse.parse_qs(parsed.query)['sku'][0]
+
+class ParsedListPageProduct(AbstractListProduct):
 
     def get_name(self) -> str:
         name = self.s.xpath(
@@ -35,17 +48,13 @@ class ParsedListPageProduct(AbstractParsedProduct):
         ).extract_first()
         return self.clean(name or '')
 
-    def get_vintage(self) -> str:
-        res = ''
-        match = re.match(r'.*([1-3][0-9]{3})', self.name)
-        if match:
-            res = match.group(1)
-        return res
-
     def get_price(self) -> float:
-        s = self.clean(self.s.xpath(
+        s = self.s.xpath(
             'div/span[@class="price"]/span/span/strong/text()'
-        ).extract_first())
+        ).extract_first()
+        if not s:
+            return 0
+        s = self.clean(s)
         s = s.replace('$', '').replace(',', '')
         try:
             float_s = float(s)
@@ -54,21 +63,7 @@ class ParsedListPageProduct(AbstractParsedProduct):
         else:
             return float_s
 
-    def get_image(self):
-        return self.s.xpath(
-            'div[@class="productImg"]/a/img/@src'
-        ).extract_first()
-
-    def get_additional(self):
-        description = self.s.xpath(
-            'div[@class="result-desc"]/p/span/text()'
-        ).extract_first()
-        return {'description': self.clean(description)}
-
     def get_qoh(self):
-        pass
-
-    def get_reviews(self):
         pass
 
     def get_url(self):
@@ -76,6 +71,7 @@ class ParsedListPageProduct(AbstractParsedProduct):
             'div[@class="result-desc"]/a/@href'
         ).extract_first()
         return f'{BASE_URL}{relative_url}'
+
 
 class ParsedProduct(AbstractParsedProduct):
 
@@ -100,7 +96,7 @@ class ParsedProduct(AbstractParsedProduct):
 
     def get_price(self) -> float:
         s = self.clean(self.r.xpath(
-            f'//div[@class="result-info"]/span/span/strong/text()'
+            '//div[@class="result-info"]/span/span/strong/text()'
         )[0].extract())
         s = s.replace('$', '').replace(',', '')
         try:
@@ -184,13 +180,7 @@ class ParsedProduct(AbstractParsedProduct):
         return reviews
 
     def get_qoh(self) -> int:
-        rows = self.r.xpath(
-            '//div[@class="inventory clearfix"]/div[@class="column"]//tr')
-        qoh = 0
-        for row in rows[1:]:
-            qty = self.clean(row.xpath('td/text()')[-1].extract())
-            qty = qty.replace('>', '').replace('<', '')
-            qoh += int(qty)
+        qoh = get_qoh(self.r)
         return qoh
 
     def as_dict(self) -> Dict:
@@ -204,6 +194,7 @@ class KLWinesSpider(AbstractSpider):
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
     filter_pipeline = "application.spiders.klwines.FilterPipeline"
+    inc_filter_pipeline = "application.spiders.klwines.IncFilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -315,7 +306,7 @@ class KLWinesSpider(AbstractSpider):
                                 )
                 else:
                     if row:
-                        yield self.parse_list_product(response, row)
+                        yield self.parse_list_product(row)
             for link in links:
                 absolute_url = BASE_URL + link
                 yield Request(
@@ -327,8 +318,8 @@ class KLWinesSpider(AbstractSpider):
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
-    def get_list_product_dict(self, r: Response, s: Selector):
-        return ParsedListPageProduct(r, s).as_dict()
+    def get_list_product_dict(self, s: Selector):
+        return ParsedListPageProduct(s).as_dict()
 
 
 class FilterPipeline(BaseFilterPipeline):
@@ -349,6 +340,13 @@ class FilterPipeline(BaseFilterPipeline):
         regex = re.compile('.*(pack in OWC).*', re.IGNORECASE)
         if bool(regex.match(item['name'])):
             raise DropItem(f'Ignoring multipack product: {item["name"]}')
+
+
+class IncFilterPipeline(BaseIncPipeline):
+
+    def get_qoh(self, response):
+        return get_qoh(response)
+
 
 def get_data(tmp_file: IO) -> None:
     settings = get_spider_settings(tmp_file, KLWinesSpider, full_scrape=False)

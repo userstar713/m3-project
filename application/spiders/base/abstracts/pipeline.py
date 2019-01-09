@@ -1,6 +1,7 @@
 import re
 from abc import ABC, abstractmethod
 from scrapy.exceptions import DropItem
+from scrapy.http.request import Request
 
 
 class BaseFilterPipeline(ABC):
@@ -52,4 +53,42 @@ class BaseFilterPipeline(ABC):
 
     @abstractmethod
     def _check_multipack(self, item: dict):
+        pass
+
+
+class BaseIncPipeline(ABC):
+
+    def __init__(self, crawler):
+        self.crawler = crawler
+
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(crawler)
+
+    def process_item(self, item, spider):
+        qoh = item['qoh']
+        if not qoh:
+            self.crawler.engine.crawl(
+                Request(
+                    url=item['single_product_url'],
+                    callback=self.update_qoh,
+                    meta={'item': item},),
+                spider,
+            )
+            raise DropItem('Opening product detail page to read the qoh.')
+            return
+        return item
+
+    def update_qoh(self, response):
+        item = response.meta.get('item')
+        item['qoh'] = self.get_qoh(response)
+        yield item
+
+    @abstractmethod
+    def get_qoh(self, response):
+        """
+        Make http request to single_product_url to read product qoh from
+        the form view. Make sure to call this if qoh is not available in
+        the list view only.
+        """
         pass

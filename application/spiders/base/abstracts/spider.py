@@ -59,6 +59,6 @@ class AbstractSpider(ABC, Spider):
         product = self.get_product_dict(response)
         return WineItem(**product)
 
-    def parse_list_product(self, r: Response, row: Selector) -> Iterator[Dict]:
-        product = self.get_list_product_dict(r, row)
+    def parse_list_product(self, row: Selector) -> Iterator[Dict]:
+        product = self.get_list_product_dict(row)
         return WineItem(**product)
