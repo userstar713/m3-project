@@ -6,7 +6,13 @@ from application.db_extension.models import db, PipelineSequence
 from application.logging import logger
 
 from .common import get_products_from_redis
-from .processor import ProductProcessor, Product, clean_sources
+from .processor import (
+    ProductProcessor,
+    Product,
+    UpdateProduct,
+    clean_sources
+)
+
 from .pipeline import execute_pipeline
 
 
@@ -24,18 +30,25 @@ def prepare_products(source_id: int, products: Iterable, full=True) -> List[dict
 
 
 @celery.task(bind=True, name='tasks.process_product_list')
-def process_product_list_task(_, chunk: List[dict]) -> None:
+def process_product_list_task(_, chunk: List[dict], full=True) -> None:
     """
     Process list of products in ProductProcessor
     :param chunk:
     :return:
     """
     logger.debug(f"Processing {len(chunk)} products")
-    processor = ProductProcessor()
+    processor = ProductProcessor(full=full)
     for i, product in enumerate(chunk):
-        p = Product(**product)
-        processor.process(p)
-        logger.info(f"Processing product # {i}")
+        if full:
+            p = Product(**product)
+            logger.info(f"Processing product # {i}")
+            processor.process(p)
+        else:
+            p = UpdateProduct(**product)
+            logger.info(f"Updating product # {i}")
+            processor.update_product(p)
+    if not full:
+        processor.delete_old_products()
     processor.flush()
 
 
@@ -93,12 +106,12 @@ def start_synchronization(source_id: int, full=True) -> str:
         job = task_execute_spider.si(source_id, full=full)\
             | clean_sources_task.si(source_id)\
             | get_products_task.si(source_id)\
-            | process_product_list_task.s(full=full) \
+            | process_product_list_task.s() \
             | execute_pipeline_task.si(source_id)
     else:
         job = task_execute_spider.si(source_id, full=full)\
             | get_products_task.si(source_id, full=full)\
-            | process_product_list_task.s() \
+            | process_product_list_task.s(full=full) \
             | execute_pipeline_task.si(source_id)
     logger.info('Calling job.delay()')
     task = job.delay()

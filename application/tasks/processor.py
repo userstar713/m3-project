@@ -196,6 +196,33 @@ def prepare_reviews(reviews: list) -> list:
     return reviews
 
 
+class UpdateProduct(NamedTuple):
+    name: str
+    price: str
+    qoh: str
+    single_product_url: str
+    source_id: int
+
+    @staticmethod
+    def from_raw(source_id: int, product: dict) -> 'Product':
+        try:
+            _product = {
+                'source_id': source_id,
+                'name': product['name'],
+                'price': product.get('price'),
+                'qoh': product.get('qoh'),
+                'single_product_url': product.get('single_product_url'),
+            }
+        except AttributeError as e:
+            logger.critical(f'Error while converting raw product {product}')
+            raise e
+        else:
+            return UpdateProduct(**_product)
+
+    def as_dict(self) -> dict:
+        return self._asdict()
+
+
 class Product(NamedTuple):
     name: str
     source_id: int
@@ -323,7 +350,9 @@ class DomainDictionaryCache:
 
 
 class ProductProcessor:
-    def __init__(self):
+    def __init__(self, full=True):
+        self.full = full
+        self.updated_product_ids = []
         self.domain_attributes = {row.code: row.__dict__ for row in
                                   db.session.query(DomainAttribute)}
         self.category_id = get_default_category_id()
@@ -481,6 +510,44 @@ class ProductProcessor:
             'extra_words': prepared['extra_words']
         }
 
+    def update_product(self, product: UpdateProduct):
+        self.product = product
+        source_product = SourceProductProxy.get_by(
+            name=product.name,
+            source_id=product.source_id,
+        )
+        if not source_product:
+            logger.warning(
+                'Product not found:%s', product.name)
+            return
+        product_id = source_product.id
+        self.updated_product_ids.append(product_id)
+        src_location_product = SourceLocationProductProxy.get_by(
+            source_product_id=product_id,
+        )
+        price = get_float_number(product.price)
+        price_int = round(price * 100)
+        src_location_product.price = price
+        src_location_product.price_int = price_int
+        src_location_product.qoh = product.qoh
+
+        for (da_code, value) in product.as_dict().items():
+            da = self.domain_attributes.get(da_code)
+            if not da:
+                continue
+            da_id = da['id']
+            sav = db.session.query(
+                SourceAttributeValue
+            ).filter_by(
+                source_product_id=product_id,
+                attribute_id=da_id
+            ).first()
+            if sav.datatype == 'integer':  # qoh
+                sav.value_integer = value
+            elif sav.datatype == 'currency':  # price
+                sav.value_float = value
+        db.session.commit()
+
     @log_durations(logger.info, unit='ms')
     def process(self, product: Product):
         self.product = product
@@ -503,7 +570,7 @@ class ProductProcessor:
         qoh = int(product.qoh)
         price_int = round(price * 100)
 
-        db.session.add(source_location_product.SourceLocationProduct(
+        db.session.add(SourceLocationProductProxy(
             source_product_id=source_product_id,
             source_location_id=location_id,
             price=price,
@@ -554,9 +621,48 @@ class ProductProcessor:
         db.session.commit()
         return master_product_id
 
+    def delete_old_products(self):
+        if self.updated_product_ids:
+            db.session.query(
+                SourceAttributeValue
+            ).filter(
+                SourceAttributeValue.source_product_id.notin_(
+                    self.updated_product_ids
+                ),
+                SourceAttributeValue.source_id==self.product.source_id
+            ).delete(synchronize_session=False)
+            db.session.query(
+                SourceProductProxy
+            ).filter(
+                SourceProductProxy.id.notin_(
+                    self.updated_product_ids
+                ),
+                SourceProductProxy.source_id==self.product.source_id
+            ).delete(synchronize_session=False)
+
+            location_ids = db.session.query(
+                source_location.SourceLocation.id
+            ).filter_by(
+                source_id=self.product.source_id
+            ).first()
+            db.session.query(
+                SourceLocationProductProxy
+            ).filter(
+                SourceLocationProductProxy.source_product_id.notin_(
+                    self.updated_product_ids),
+                SourceLocationProductProxy.source_location_id==location_ids[0]
+            ).delete(synchronize_session=False)
+            db.session.query(
+                SourceReview
+            ).filter(
+                SourceReview.source_product_id.notin_(
+                    self.updated_product_ids),
+                SourceReview.source_id==self.product.source_id
+            ).delete(synchronize_session=False)
+            db.session.commit()
+
 
 def clean_sources(source_id: int) -> None:
-    # TODO run on the full scrape only
     db.session.query(
         SourceAttributeValue
     ).filter_by(
