@@ -6,7 +6,6 @@ from scrapy import (
     FormRequest,
     Selector
 )
-from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
@@ -363,11 +362,6 @@ class WineLibrarySpider(AbstractSpider):
 class FilterPipeline(BaseFilterPipeline):
 
     IGNORED_IMAGES = []
-
-    def _check_multipack(self, item: dict):
-        regex = re.compile(r'.*(\d Pack).*', re.IGNORECASE)
-        if bool(regex.match(item['name'])):
-            raise DropItem(f'Ignoring multipack product: {item["name"]}')
 
 
 class IncFilterPipeline(BaseIncPipeline):

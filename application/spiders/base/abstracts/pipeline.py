@@ -51,9 +51,10 @@ class BaseFilterPipeline(ABC):
         if is_prearrival:
             raise DropItem(f'Skipping pre-arrival: {item["name"]}')
 
-    @abstractmethod
     def _check_multipack(self, item: dict):
-        pass
+        regex = re.compile(r'.*(\d Pack).*', re.IGNORECASE)
+        if bool(regex.match(item['name'])):
+            raise DropItem(f'Ignoring multipack product: {item["name"]}')
 
 
 class BaseIncPipeline(ABC):
@@ -67,7 +68,7 @@ class BaseIncPipeline(ABC):
 
     def process_item(self, item, spider):
         qoh = item['qoh']
-        if not qoh:
+        if qoh is None:
             self.crawler.engine.crawl(
                 Request(
                     url=item['single_product_url'],
