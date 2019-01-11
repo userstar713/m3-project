@@ -52,7 +52,7 @@ class AbstractSpider(ABC, Spider):
         pass
 
     @abstractmethod
-    def get_list_product_dict(self, r: Response, s: Selector):
+    def get_list_product_dict(self, s: Selector):
         pass
 
     def parse_product(self, response: Response) -> Iterator[Dict]:

@@ -1,6 +1,5 @@
 import logging
 import re
-import urllib.parse as urlparse
 
 from typing import Iterator, Dict, IO
 

@@ -28,7 +28,7 @@ BASE_PATH = Path(__file__).parent
 
 SQLALCHEMY_DATABASE_URI = getenv('SQLALCHEMY_DATABASE_URI',
                                  'postgresql://'
-                                 'postgres:password@db:5432/m3')
+                                 'postgres:password@localhost:5432/m3')
 
 # https://github.com/mitsuhiko/flask-sqlalchemy/issues/365
 SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -40,4 +40,5 @@ CELERY_RESULT_BACKEND = getenv('CELERY_RESULT_BACKEND', REDIS_URI)
 CELERY_EAGER = getenv('CELERY_EAGER', 0)
 SCRAPER_PAGES_LIMIT = int(getenv('SCRAPER_PAGES_LIMIT', 0))
 # 
-PROXY_URL = 'http://lum-customer-hl_2a4458fe-zone-static-country-us:zidoxuxldfjn@zproxy.lum-superproxy.io:22225'
+# PROXY_URL = 'http://lum-customer-hl_2a4458fe-zone-static-country-us:zidoxuxldfjn@zproxy.lum-superproxy.io:22225'
+PROXY_URL = ''

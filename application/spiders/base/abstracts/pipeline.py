@@ -84,7 +84,6 @@ class BaseIncPipeline(ABC):
         item['qoh'] = self.get_qoh(response)
         yield item
 
-    @abstractmethod
     def get_qoh(self, response):
         """
         Make http request to single_product_url to read product qoh from
