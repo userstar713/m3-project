@@ -3,6 +3,7 @@ import re
 from typing import Iterator, Dict, IO, List
 
 from scrapy import FormRequest
+from scrapy import Selector
 from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
 from scrapy.http.response import Response
@@ -10,14 +11,68 @@ from scrapy.crawler import CrawlerProcess
 
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
-from application.spiders.base.abstracts.product import AbstractParsedProduct
-from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
+from application.spiders.base.abstracts.product import (
+    AbstractParsedProduct,
+    AbstractListProduct
+)
+from application.spiders.base.abstracts.pipeline import (
+    BaseFilterPipeline,
+    BaseIncPipeline
+)
 
 BASE_URL = 'https://www.wine.com'
 
 
-def clean(s):
-    return s.replace('\r', '').replace('\n', '').strip()
+def get_qoh(response):
+    qoh = response.xpath(
+        '//select[@class="prodItemStock_quantitySelect"]/option/@value')
+    try:
+        qoh = int(qoh.pop().extract())
+    except IndexError:
+        qoh = 0
+    return qoh
+
+
+class ParsedListPageProduct(AbstractListProduct):
+
+    def get_name(self) -> str:
+        name = self.s.xpath(
+            'div/div/a/span[@class="prodItemInfo_name"]/text()'
+        ).extract_first()
+        return self.clean(name or '')
+
+    def get_price(self) -> float:
+        price = self.s.xpath(
+            'div//span[@class="productPrice_price-saleWhole"]/text()'
+        ).extract_first()
+        fractional = self.s.xpath(
+            'div//span[@class="productPrice_price-saleFractional"]/text()'
+        ).extract_first()
+        price = price.replace(',', '')
+        if fractional:
+            price = '.'.join([price, fractional])
+        try:
+            float_price = float(price)
+        except ValueError:
+            return "ERROR READING PRICE"
+        else:
+            return float_price
+
+    def get_qoh(self):
+        qoh = self.s.xpath(
+            'div//select[@class="prodItemStock_quantitySelect"]/option/text()'
+        )
+        try:
+            qoh = int(qoh[-1].extract())
+        except IndexError:
+            qoh = 0
+        return qoh
+
+    def get_url(self):
+        relative_url = self.s.xpath(
+            'div/div/a/@href'
+        ).extract_first()
+        return f'{BASE_URL}{relative_url}'
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -34,7 +89,7 @@ class ParsedProduct(AbstractParsedProduct):
         description = self.r.xpath(
             '//div[@class="pipWineNotes"]/div/div[1]//text()[not(ancestor::em)]'
         ).extract()
-        description = ' '.join([clean(desc) for desc in description])
+        description = ' '.join([self.clean(desc) for desc in description])
         return description
 
     def get_sku(self) -> str:
@@ -151,7 +206,7 @@ class ParsedProduct(AbstractParsedProduct):
                 'div/div[@class="pipSecContent_copy"]/text()'
             ).extract_first()
             if content:
-                content = clean(content)
+                content = self.clean(content)
             reviews.append({'reviewer_name': reviewer_name,
                             'score_num': score_str and int(score_str) or None,
                             'score_str': score_str,
@@ -160,12 +215,7 @@ class ParsedProduct(AbstractParsedProduct):
         return reviews
 
     def get_qoh(self) -> int:
-        qoh = self.r.xpath(
-            '//select[@class="prodItemStock_quantitySelect"]/option/@value')
-        try:
-            qoh = int(qoh.pop().extract())
-        except IndexError:
-            qoh = 0
+        qoh = get_qoh(self.r)
         return qoh
 
 
@@ -176,6 +226,7 @@ class WineComSpider(AbstractSpider):
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
     filter_pipeline = "application.spiders.wine_com.FilterPipeline"
+    inc_filter_pipeline = "application.spiders.wine_com.IncFilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -277,16 +328,22 @@ class WineComSpider(AbstractSpider):
         """
         # from scrapy.utils.response import open_in_browser
         # open_in_browser(response)
-        selector = '//a[@class="prodItemInfo_link"]/@href'
-        rows = response.xpath(selector)
-        product_links = rows.getall()
-        for product_link in product_links:
-            absolute_url = BASE_URL + product_link
-            yield Request(
-                absolute_url,
-                callback=self.parse_product,
-                meta={'wine_type': response.meta['wine_type']},
-                priority=1)
+        full_scrape = self.settings['FULL_SCRAPE']
+        if full_scrape:
+            selector = '//a[@class="prodItemInfo_link"]/@href'
+            rows = response.xpath(selector)
+            product_links = rows.getall()
+            for product_link in product_links:
+                absolute_url = BASE_URL + product_link
+                yield Request(
+                    absolute_url,
+                    callback=self.parse_product,
+                    meta={'wine_type': response.meta['wine_type']},
+                    priority=1)
+        else:
+            products = response.xpath('//li[@class="prodItem"]')
+            for product in products:
+                yield self.parse_list_product(product)
 
     @property
     def ignored_images(self) -> List[str]:
@@ -295,8 +352,8 @@ class WineComSpider(AbstractSpider):
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
-    def get_list_product_dict(self, response: Response):
-        raise NotImplementedError
+    def get_list_product_dict(self, s: Selector):
+        return ParsedListPageProduct(s).as_dict()
 
 
 class FilterPipeline(BaseFilterPipeline):
@@ -308,8 +365,14 @@ class FilterPipeline(BaseFilterPipeline):
         if bool(regex.match(item['name'])):
             raise DropItem(f'Ignoring multipack product: {item["name"]}')
 
+
+class IncFilterPipeline(BaseIncPipeline):
+
+    pass
+
+
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, WineComSpider)
+    settings = get_spider_settings(tmp_file, WineComSpider, full_scrape=False)
     process = CrawlerProcess(settings)
     process.crawl(WineComSpider)
     process.start()

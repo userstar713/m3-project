@@ -1,20 +1,78 @@
 import re
 
-from typing import Iterator, Dict, IO, List
+from typing import Iterator, Dict, IO
 
-from scrapy import FormRequest
-from scrapy.exceptions import DropItem
+from scrapy import (
+    FormRequest,
+    Selector
+)
+
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
 
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
-from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
-from application.spiders.base.abstracts.product import AbstractParsedProduct
+from application.spiders.base.abstracts.pipeline import (
+    BaseFilterPipeline,
+    BaseIncPipeline
+)
+from application.spiders.base.abstracts.product import (
+    AbstractParsedProduct,
+    AbstractListProduct
+)
 
 
 BASE_URL = 'https://www.thewineclub.com'
+
+
+def get_qoh(response):
+    qoh = response.xpath(
+        '//span[@class="cartQtyLeft"]/text()'
+    ).extract_first() or 0
+    qoh = re.findall(r'\d+', qoh)
+    return qoh and int(qoh[0])
+
+
+class ParsedListPageProduct(AbstractListProduct):
+
+    def get_name(self) -> str:
+        name = self.s.xpath(
+            'td[2]/a/text()'
+        ).extract_first()
+        return self.clean(name or '')
+
+    def get_price(self) -> float:
+        s = self.s.xpath(
+            'td[3]/table/tr/td/span[@class="RegularPrice"]/text()'
+        ).extract_first()
+        if not s:
+            s = self.s.xpath(
+                'td[3]/table/tr/td/span[@class="SalePrice"]/text()'
+            ).extract_first()
+        if not s:
+            return 0
+        s = self.clean(s)
+        s = s.replace('$', '').replace(',', '')
+        try:
+            float_s = float(s)
+        except ValueError:
+            return "ERROR READING PRICE"
+        else:
+            return float_s
+
+    def get_qoh(self):
+        out = self.s.xpath(
+            'td[3]/table/tr/td/span[@class="SalePrice"]/text()'
+        ).extract_first()
+        if out and out == 'Please Inquire':
+            return 0
+
+    def get_url(self):
+        url = self.s.xpath(
+            'td[2]/a/@href'
+        ).extract_first()
+        return url
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -34,7 +92,9 @@ class ParsedProduct(AbstractParsedProduct):
         description = self.r.xpath(
             '//div[@id="moreinfo"]/p/text()'
         ).getall()
-        if not description:
+        if description:
+            description = ''.join(description)
+        else:
             description = self.r.xpath(
                 '//div[@id="moreinfo"]/text()'
             ).getall()
@@ -85,6 +145,10 @@ class ParsedProduct(AbstractParsedProduct):
         price = self.r.xpath(
             '//span[@class="SalePrice"]/text()'
         ).extract_first()
+        if not price:
+            price = self.r.xpath(
+                '//span[@class="RegularPrice"]/text()'
+            ).extract_first()
         price = price.replace('$', '')
         try:
             float_price = float(price)
@@ -165,12 +229,8 @@ class ParsedProduct(AbstractParsedProduct):
         return reviews
 
     def get_qoh(self) -> int:
-
-        qoh = self.r.xpath(
-            '//span[@class="cartQtyLeft"]/text()'
-        ).extract_first() or 0
-        qoh = re.findall(r'\d+', qoh)
-        return qoh and int(qoh[0])
+        qoh = get_qoh(self.r)
+        return qoh
 
 
 class TheWineClubSpider(AbstractSpider):
@@ -180,6 +240,7 @@ class TheWineClubSpider(AbstractSpider):
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
     filter_pipeline = "application.spiders.thewineclub.FilterPipeline"
+    inc_filter_pipeline = "application.spiders.thewineclub.IncFilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -295,36 +356,49 @@ class TheWineClubSpider(AbstractSpider):
         :param response: response from ScraPy
         :return: iterator for data
         """
-        selector = '//a[@class="Srch-producttitle"]/@href'
-        rows = response.xpath(selector)
-        product_links = rows.getall()
-        for product_link in product_links:
-            product_link = product_link.replace('http://', 'https://')
-            yield Request(
-                product_link,
-                callback=self.parse_product,
-                meta={'wine_type': response.meta['wine_type']},
-                priority=1)
+        # selector = '//a[@class="Srch-producttitle"]/@href'
+        # rows = response.xpath(selector)
+        # product_links = rows.getall()
+        full_scrape = self.settings['FULL_SCRAPE']
+        if full_scrape:
+            product_links = response.xpath(
+                '//a[@class="Srch-producttitle"]/@href'
+            ).extract()
+            for product_link in product_links:
+                product_link = product_link.replace('http://', 'https://')
+                yield Request(
+                    product_link,
+                    callback=self.parse_product,
+                    meta={'wine_type': response.meta['wine_type']},
+                    priority=1)
+        else:
+            products = response.xpath(
+                '//form/table[4]/tr/td/table/tr'
+            )
+
+            for product in products:
+                yield self.parse_list_product(product)
 
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
-    def get_list_product_dict(self, response: Response):
-        raise NotImplementedError
+    def get_list_product_dict(self, s: Selector):
+        return ParsedListPageProduct(s).as_dict()
 
 
 class FilterPipeline(BaseFilterPipeline):
 
     IGNORED_IMAGES = ['not_available.gif']
 
-    def _check_multipack(self, item: dict):
-        regex = re.compile(r'.*(\d Pack).*', re.IGNORECASE)
-        if bool(regex.match(item['name'])):
-            raise DropItem(f'Ignoring multipack product: {item["name"]}')
+
+class IncFilterPipeline(BaseIncPipeline):
+
+    def get_qoh(self, response):
+        return get_qoh(response)
 
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, TheWineClubSpider)
+    settings = get_spider_settings(tmp_file, TheWineClubSpider, full_scrape=False)
     process = CrawlerProcess(settings)
     process.crawl(TheWineClubSpider)
     process.start()

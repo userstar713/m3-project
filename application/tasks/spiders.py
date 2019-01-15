@@ -39,7 +39,7 @@ def get_test_products() -> List:
 def task_execute_spider(self, source_id: int, full=True) -> None:
     source = db.session.query(Source).get(source_id)
     is_use_interim = source.is_use_interim
-    is_data_exists = bool(get_products_from_redis(source_id))
+    is_data_exists = bool(get_products_from_redis(source_id, full=full))
 
     if is_use_interim and is_data_exists:
         # skip spider if we have products in the redis
@@ -60,7 +60,11 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
     else:
         raise ValueError(f'No support for source with name {source.name}')
     data = scraper.run(full=full)
+    if full:
+        cache_key = f'spider::{source_id}::data'
+    else:
+        cache_key = f'spider::{source_id}::data::inc'
     if data:
-        cache.set(f'spider::{source_id}::data',
+        cache.set(cache_key,
                   pickle.dumps(data, protocol=-1),
                   timeout=0)

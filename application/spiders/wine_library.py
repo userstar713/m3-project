@@ -2,8 +2,10 @@ import re
 
 from typing import Iterator, Dict, IO, List
 
-from scrapy import FormRequest
-from scrapy.exceptions import DropItem
+from scrapy import (
+    FormRequest,
+    Selector
+)
 from scrapy.http.request import Request
 from scrapy.http.response import Response
 from scrapy.crawler import CrawlerProcess
@@ -11,14 +13,61 @@ from scrapy.crawler import CrawlerProcess
 from application.logging import logger
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
-from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
-from application.spiders.base.abstracts.product import AbstractParsedProduct
+from application.spiders.base.abstracts.pipeline import (
+    BaseFilterPipeline,
+    BaseIncPipeline
+)
+from application.spiders.base.abstracts.product import (
+    AbstractParsedProduct,
+    AbstractListProduct
+)
 
 BASE_URL = 'https://winelibrary.com'
 # BASE FILTER includes filters: Library Pass Items, 750 ML, Non-Presale
 # Red, White, Rose wine types
 BASE_FILTER = ('/search?search=&lpass=1&color[]=Red&color[]=White&color[]='
                'Rose&size[]=750ML&presale[]=Non-Presale')
+
+
+def get_qoh(response):
+    row = response.xpath(
+        '//div[@id="qty-box"]/input')
+    qty = row.xpath('@data-running-out-stop').extract_first()
+    max_qty = row.xpath('@max').extract_first()
+    return qty and int(qty) or max_qty and int(max_qty)
+
+
+class ParsedListPageProduct(AbstractListProduct):
+
+    def get_name(self) -> str:
+        name = self.s.xpath(
+            'div/div/h5/a/span[@class="js-elip-multi"]/text()'
+        ).extract_first()
+        return self.clean(name or '')
+
+    def get_price(self) -> float:
+        s = self.s.xpath(
+            'div/div/h4[@class="search-item-price"]/text()'
+        ).extract_first()
+        if not s:
+            return 0
+        s = self.clean(s)
+        s = s.replace('$', '').replace(',', '')
+        try:
+            float_s = float(s)
+        except ValueError:
+            return "ERROR READING PRICE"
+        else:
+            return float_s
+
+    def get_qoh(self):
+        pass
+
+    def get_url(self):
+        relative_url = self.s.xpath(
+            'div/div/h5/a/@href'
+        ).extract_first()
+        return f'{BASE_URL}{relative_url}'
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -213,11 +262,8 @@ class ParsedProduct(AbstractParsedProduct):
         return reviews
 
     def get_qoh(self) -> int:
-        row = self.r.xpath(
-            '//div[@id="qty-box"]/input')
-        qty = row.xpath('@data-running-out-stop').extract_first()
-        max_qty = row.xpath('@max').extract_first()
-        return qty and int(qty) or max_qty and int(max_qty)
+        qoh = get_qoh(self.r)
+        return qoh
 
 
 class WineLibrarySpider(AbstractSpider):
@@ -227,7 +273,7 @@ class WineLibrarySpider(AbstractSpider):
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
     filter_pipeline = "application.spiders.wine_library.FilterPipeline"
-    
+    inc_filter_pipeline = "application.spiders.wine_library.IncFilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
@@ -235,7 +281,7 @@ class WineLibrarySpider(AbstractSpider):
             callback=self.login
         )
 
-    def before_login(self):
+    def before_login(self, response):
         pass
 
     def login(self, response: Response) -> Iterator[Dict]:
@@ -285,15 +331,22 @@ class WineLibrarySpider(AbstractSpider):
             logger.exception("Login failed")
             yield
         else:
-            selector = '//h5[@class="h-sm search-item-title"]/a/@href'
-            rows = response.xpath(selector)
-            links = [row.extract() for row in rows]
-            for link in links:
-                absolute_url = BASE_URL + link
-                yield Request(
-                    absolute_url,
-                    callback=self.parse_product,
-                    priority=1)
+            full_scrape = self.settings['FULL_SCRAPE']
+            res = response.xpath('//div[@id="result_pane"]')
+            if full_scrape:
+                links = res.xpath(
+                    '//h5[@class="h-sm search-item-title"]/a/@href'
+                ).extract()
+                for link in links:
+                    absolute_url = BASE_URL + link
+                    yield Request(
+                        absolute_url,
+                        callback=self.parse_product,
+                        priority=1)
+            else:
+                products = res.xpath('div[@class="search-item"]')
+                for product in products:
+                    yield self.parse_list_product(product)
 
     @property
     def ignored_images(self) -> List[str]:
@@ -302,34 +355,23 @@ class WineLibrarySpider(AbstractSpider):
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
-    def get_list_product_dict(self, response: Response):
-        raise NotImplementedError
-
-    def check_prearrival(self, product: dict, response: Response):
-        text = response.xpath(
-            '//div[@class="alert_message mb5"]/strong/text()'
-        ).extract_first() or ''
-        return self.is_prearrival(text)
-
-    def check_multipack(self, product: dict, response: Response):
-        size_label = response.xpath(
-            '//td[text()="Size"]/following-sibling::td[1]/text()'
-        ).extract_first()
-        return size_label == 'each'
+    def get_list_product_dict(self, s: Selector):
+        return ParsedListPageProduct(s).as_dict()
 
 
 class FilterPipeline(BaseFilterPipeline):
 
     IGNORED_IMAGES = []
 
-    def _check_multipack(self, item: dict):
-        regex = re.compile(r'.*(\d Pack).*', re.IGNORECASE)
-        if bool(regex.match(item['name'])):
-            raise DropItem(f'Ignoring multipack product: {item["name"]}')
+
+class IncFilterPipeline(BaseIncPipeline):
+
+    def get_qoh(self, response):
+        return get_qoh(response)
 
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, WineLibrarySpider)
+    settings = get_spider_settings(tmp_file, WineLibrarySpider, full_scrape=True)
     process = CrawlerProcess(settings)
     process.crawl(WineLibrarySpider)
     process.start()

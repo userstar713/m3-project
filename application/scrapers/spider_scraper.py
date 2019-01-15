@@ -20,7 +20,6 @@ from application.spiders.base.abstracts.spider import (
 
 def get_spider_settings(tmp_file: io.IOBase, spider: Spider, full_scrape=True) -> dict:
     settings = {
-        'ITEM_PIPELINES': {spider.filter_pipeline: 300},
         'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': COOKIES_DEBUG,
         'FEED_FORMAT': 'jsonlines',
@@ -31,6 +30,10 @@ def get_spider_settings(tmp_file: io.IOBase, spider: Spider, full_scrape=True) -
         'CLOSESPIDER_PAGECOUNT': SCRAPER_PAGES_LIMIT,
         'FULL_SCRAPE': full_scrape,
     }
+    if full_scrape:
+        settings['ITEM_PIPELINES'] = {spider.filter_pipeline: 300}
+    else:
+        settings['ITEM_PIPELINES'] = {spider.inc_filter_pipeline: 300}
     if PROXY_URL:
         settings.update({
             'DOWNLOADER_MIDDLEWARES': {

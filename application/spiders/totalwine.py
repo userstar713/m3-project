@@ -3,6 +3,7 @@ import re
 import requests
 
 
+from scrapy import Selector
 from scrapy.http.request import Request
 from scrapy.exceptions import CloseSpider
 from scrapy.http.response import Response
@@ -11,8 +12,14 @@ from scrapy.crawler import CrawlerProcess
 from application.logging import logger
 from application.scrapers.spider_scraper import get_spider_settings
 from application.spiders.base.abstracts.spider import AbstractSpider
-from application.spiders.base.abstracts.pipeline import BaseFilterPipeline
-from application.spiders.base.abstracts.product import AbstractParsedProduct
+from application.spiders.base.abstracts.pipeline import (
+    BaseFilterPipeline,
+    BaseIncPipeline
+)
+from application.spiders.base.abstracts.product import (
+    AbstractParsedProduct,
+    AbstractListProduct
+)
 
 BASE_URL = 'https://www.totalwine.com'
 REVIEWS_URL = (
@@ -23,6 +30,48 @@ REVIEWS_URL = (
     'stats.q0=reviews&filteredstats.q0=reviews&include.q0=authors,products,'
     'comments&filter_reviews.q0=contentlocale:eq:en_US&filter_reviewcomments'
     '.q0=contentlocale:eq:en_US&filter_comments.q0=contentlocale:eq:en_US')
+
+
+class ParsedListPageProduct(AbstractListProduct):
+
+    def get_name(self) -> str:
+        name = self.s.xpath(
+            'div//h2/a/text()'
+        ).extract_first()
+        return self.clean(name or '')
+
+    def get_price(self) -> float:
+        price = self.s.xpath(
+            'div//div[@class="plp-product-buy-actual-price"]/span/text()'
+        ).extract_first()
+        if not price:
+            price = self.s.xpath(
+                'div//span[@class="price"]/text()'
+            ).extract_first()
+            if price:
+                price = re.search(r'[0-9\.]+', price).group()
+        try:
+            float_price = float(price)
+        except ValueError:
+            return price
+        else:
+            return float_price
+
+    def get_qoh(self):
+        na = self.s.xpath(
+            'div//div[@class="plp-product-buy-limited"]/text()'
+        ).extract_first()
+        if na and 'Not currently available' in na:
+            qoh = 0
+        else:
+            qoh = 100
+        return qoh
+
+    def get_url(self):
+        url = self.s.xpath(
+            'div//h2/a/@href'
+        ).extract_first()
+        return url
 
 
 class ParsedProduct(AbstractParsedProduct):
@@ -163,6 +212,7 @@ class TotalWineSpider(AbstractSpider):
     LOGIN = "wine_shoper@protonmail.com"
     PASSWORD = "ilovewine1B"
     filter_pipeline = "application.spiders.totalwine.FilterPipeline"
+    inc_filter_pipeline = "application.spiders.totalwine.IncFilterPipeline"
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request('http://checkip.dyndns.org/', callback=self.check_ip)
@@ -279,28 +329,26 @@ class TotalWineSpider(AbstractSpider):
             links = []
             for row in rows:
                 if full_scrape:
-                    if row:
-                        na = row.xpath(
-                            'div/div/div/div/div/div[@class'
-                            '="plp-product-buy-limited"]/text()'
-                        ).extract_first()
-                        na = AbstractParsedProduct.clean(na)
-                        if na:
-                            continue
+                    na = row.xpath(
+                        'div/div/div/div/div/div[@class'
+                        '="plp-product-buy-limited"]/text()'
+                    ).extract_first()
+                    na = AbstractParsedProduct.clean(na)
+                    if na:
+                        continue
 
-                        link = row.xpath(
-                            'div/div/div/a/@href'
-                        ).extract_first()
-                        if link:
-                            links.append(link)
-                        else:
-                            logger.exception(
-                                'Link not fount for %s '
-                                'on page: %s', row, response.url
-                            )
+                    link = row.xpath(
+                        'div/div/div/a/@href'
+                    ).extract_first()
+                    if link:
+                        links.append(link)
+                    else:
+                        logger.exception(
+                            'Link not fount for %s '
+                            'on page: %s', row, response.url
+                        )
                 else:
-                    if row:
-                        yield self.parse_list_product(response, row)
+                    yield self.parse_list_product(row)
             for link in links:
                 absolute_url = BASE_URL + link
                 product_id = re.findall(r'\d+', link)[0]
@@ -320,14 +368,8 @@ class TotalWineSpider(AbstractSpider):
     def get_product_dict(self, response: Response):
         return ParsedProduct(response).as_dict()
 
-    def get_list_product_dict(self, response: Response):
-        raise NotImplementedError
-
-    def check_prearrival(self, product: dict, response: Response):
-        text = response.xpath(
-            '//div[@class="alert_message mb5"]/strong/text()'
-        ).extract_first() or ''
-        return self.is_prearrival(text)
+    def get_list_product_dict(self, s: Selector):
+        return ParsedListPageProduct(s).as_dict()
 
 
 class FilterPipeline(BaseFilterPipeline):
@@ -339,8 +381,13 @@ class FilterPipeline(BaseFilterPipeline):
         pass
 
 
+class IncFilterPipeline(BaseIncPipeline):
+
+    pass
+
+
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, TotalWineSpider)
+    settings = get_spider_settings(tmp_file, TotalWineSpider, full_scrape=False)
     process = CrawlerProcess(settings)
     process.crawl(TotalWineSpider)
     process.start()
