@@ -15,6 +15,8 @@ def init_celery(app):
     # subclass task base for app context
     # http://flask.pocoo.org/docs/0.12/patterns/celery/
     TaskBase = celery.Task
+    celery.conf.task_routes = {'application.tasks.*': {'queue': 'scraping'}}
+
     class AppContextTask(TaskBase):
         abstract = True
         def __call__(self, *args, **kwargs):
