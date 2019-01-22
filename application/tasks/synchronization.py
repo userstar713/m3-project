@@ -5,7 +5,6 @@ from sqlalchemy import func
 from application.db_extension.models import db, PipelineSequence
 from application.logging import logger
 
-from .common import get_products_from_redis
 from .processor import (
     ProductProcessor,
     Product,
@@ -19,7 +18,8 @@ from .pipeline import execute_pipeline
 celery = Celery(__name__, autofinalize=False)
 
 
-def prepare_products(source_id: int, products: Iterable, full=True) -> List[dict]:
+def prepare_products(source_id: int, products: Iterable,
+                     full=True) -> List[dict]:
     if full:
         res = [Product.from_raw(source_id, product).as_dict() for product in
                products]
@@ -67,21 +67,20 @@ def execute_pipeline_task(_, source_id: int) -> None:
 
 
 @celery.task(bind=True)
-def clean_sources_task(_, source_id: int) -> None:
-    data_exists = bool(get_products_from_redis(source_id))
-    if data_exists:
+def clean_sources_task(_, data: List[dict], source_id: int) -> None:
+    if data:
         clean_sources(source_id)
+    return data
 
 
 @celery.task(bind=True)
-def get_products_task(_, source_id: int, full=True) -> List[dict]:
+def get_products_task(_, products: List[dict], source_id: int,
+                      full=True) -> List[dict]:
     """
     Get raw data from the redis and return it as dictionaries
     :param source_id:
     :return:
     """
-    products = get_products_from_redis(source_id, full=full)
-    # return list(chunkify(prepare_products(source_id, products), 500))
     return prepare_products(source_id, products, full=full)
 
 
@@ -104,13 +103,13 @@ def start_synchronization(source_id: int, full=True) -> str:
     # if it is set, don't run the scraper, use the data from
     if full:
         job = task_execute_spider.si(source_id, full=full)\
-            | clean_sources_task.si(source_id)\
-            | get_products_task.si(source_id)\
+            | clean_sources_task.s(source_id)\
+            | get_products_task.s(source_id)\
             | process_product_list_task.s() \
             | execute_pipeline_task.si(source_id)
     else:
         job = task_execute_spider.si(source_id, full=full)\
-            | get_products_task.si(source_id, full=full)\
+            | get_products_task.s(source_id, full=full)\
             | process_product_list_task.s(full=full) \
             | execute_pipeline_task.si(source_id)
     logger.info('Calling job.delay()')
