@@ -2,6 +2,7 @@ from typing import List, Iterable
 
 from celery import Celery
 from sqlalchemy import func
+from application import config
 from application.db_extension.models import db, PipelineSequence
 from application.logging import logger
 
@@ -16,7 +17,12 @@ from .processor import (
 from .pipeline import execute_pipeline
 
 
-celery = Celery(__name__, autofinalize=False)
+celery = Celery(
+    'scraping',
+    autofinalize=False,
+    broker=config.CELERY_BROKER_URL,
+    backend=config.CELERY_RESULT_BACKEND
+)
 
 
 def prepare_products(source_id: int, products: Iterable, full=True) -> List[dict]:
@@ -29,7 +35,7 @@ def prepare_products(source_id: int, products: Iterable, full=True) -> List[dict
     return res
 
 
-@celery.task(bind=True, name='tasks.process_product_list')
+@celery.task(bind=True)
 def process_product_list_task(_, chunk: List[dict], full=True) -> None:
     """
     Process list of products in ProductProcessor
@@ -83,6 +89,11 @@ def get_products_task(_, source_id: int, full=True) -> List[dict]:
     products = get_products_from_redis(source_id, full=full)
     # return list(chunkify(prepare_products(source_id, products), 500))
     return prepare_products(source_id, products, full=full)
+
+
+@celery.task(bind=True)
+def aloha(_):
+    logger.info('ALOHA')
 
 
 def queue_sequence(source_id: int):

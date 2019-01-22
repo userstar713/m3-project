@@ -16,7 +16,12 @@ def init_celery(app):
     # http://flask.pocoo.org/docs/0.12/patterns/celery/
     TaskBase = celery.Task
     celery.conf.task_routes = {'application.tasks.*': {'queue': 'scraping'}}
-
+    celery.conf.beat_schedule = {
+        'aloha': {
+            'task': 'application.tasks.synchronization.aloha',
+            'schedule': 60,  # 5 minutes
+            'options': {'queue': 'scraping'},
+    }}
     class AppContextTask(TaskBase):
         abstract = True
         def __call__(self, *args, **kwargs):
