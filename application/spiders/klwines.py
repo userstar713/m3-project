@@ -348,7 +348,7 @@ class IncFilterPipeline(BaseIncPipeline):
 
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, KLWinesSpider, full_scrape=False)
+    settings = get_spider_settings(tmp_file, 1, KLWinesSpider, full_scrape=True)
     process = CrawlerProcess(settings)
     process.crawl(KLWinesSpider)
     process.start()

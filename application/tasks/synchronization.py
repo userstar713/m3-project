@@ -36,7 +36,7 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> None:
     :param chunk:
     :return:
     """
-    logger.debug(f"Processing {len(chunk)} products")
+    logger.info(f"Processing {len(chunk)} products")
     processor = ProductProcessor(full=full)
     for i, product in enumerate(chunk):
         if full:

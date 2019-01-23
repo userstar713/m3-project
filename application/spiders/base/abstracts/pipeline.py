@@ -1,7 +1,13 @@
 import re
-from abc import ABC, abstractmethod
+from abc import ABC
 from scrapy.exceptions import DropItem
 from scrapy.http.request import Request
+from application.db_extension.models import (
+    db,
+    Source,
+    SourceProductProxy,
+    SourceLocationProductProxy
+)
 
 
 class BaseFilterPipeline(ABC):
@@ -35,10 +41,12 @@ class BaseFilterPipeline(ABC):
     def _check_product_image(self, item: dict):
         image = item['image']
         if not image or 'default_bottle' in image:
-            raise DropItem(f'Skipping product with ignored image: {item["name"]}')
+            raise DropItem(
+                f'Skipping product with ignored image: {item["name"]}')
         relative_image = image.split('/')[-1]
         if relative_image in self.IGNORED_IMAGES:
-            raise DropItem(f'Skipping product with ignored image: {item["name"]}')
+            raise DropItem(
+                f'Skipping product with ignored image: {item["name"]}')
 
     def _check_qoh(self, item: dict):
         if not item['qoh']:
@@ -69,15 +77,31 @@ class BaseIncPipeline(ABC):
     def process_item(self, item, spider):
         qoh = item['qoh']
         if qoh is None:
-            self.crawler.engine.crawl(
-                Request(
-                    url=item['single_product_url'],
-                    callback=self.update_qoh,
-                    meta={'item': item},),
-                spider,
+            source_product = SourceProductProxy.get_by(
+                name=item['name'],
+                source_id=spider.settings['SOURCE_ID'],
             )
-            raise DropItem('Opening product detail page to read the qoh.')
-            return
+            if source_product:
+                src_location_product = SourceLocationProductProxy.get_by(
+                    source_product_id=source_product.id,
+                )
+                if src_location_product:
+                    qoh = src_location_product.qoh
+                    qoh_threshold = db.session.query(
+                        Source.min_qoh_threshold
+                    ).filter_by(
+                        id=spider.settings['SOURCE_ID']
+                    ).scalar()
+                    if qoh <= qoh_threshold:
+                        self.crawler.engine.crawl(
+                            Request(
+                                url=item['single_product_url'],
+                                callback=self.update_qoh,
+                                meta={'item': item},),
+                            spider,
+                        )
+                        raise DropItem(
+                            'Opening product detail page to read the qoh.')
         return item
 
     def update_qoh(self, response):

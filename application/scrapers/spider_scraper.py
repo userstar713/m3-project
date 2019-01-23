@@ -18,7 +18,8 @@ from application.spiders.base.abstracts.spider import (
     DOWNLOADER_CLIENTCONTEXTFACTORY)
 
 
-def get_spider_settings(tmp_file: io.IOBase, spider: Spider, full_scrape=True) -> dict:
+def get_spider_settings(tmp_file: io.IOBase, source_id: int, spider: Spider,
+                        full_scrape=True) -> dict:
     settings = {
         'CONCURRENT_REQUESTS': CONCURRENT_REQUESTS,
         'COOKIES_DEBUG': COOKIES_DEBUG,
@@ -29,6 +30,7 @@ def get_spider_settings(tmp_file: io.IOBase, spider: Spider, full_scrape=True) -
         'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
         'CLOSESPIDER_PAGECOUNT': SCRAPER_PAGES_LIMIT,
         'FULL_SCRAPE': full_scrape,
+        'SOURCE_ID': source_id,
     }
     if full_scrape:
         settings['ITEM_PIPELINES'] = {spider.filter_pipeline: 300}
@@ -50,9 +52,11 @@ def get_spider_settings(tmp_file: io.IOBase, spider: Spider, full_scrape=True) -
 
 
 class CrawlerScript(Process):
-    def __init__(self, tmp_file, spider, full):
+    def __init__(self, tmp_file, source_id, spider, full):
         Process.__init__(self)
-        settings = get_spider_settings(tmp_file, spider, full_scrape=full)
+        settings = get_spider_settings(
+            tmp_file, source_id, spider, full_scrape=full
+        )
         self.crawler = Crawler(spider, settings)
         self.crawler.signals.connect(
             reactor.stop, signal=signals.spider_closed)
@@ -67,9 +71,9 @@ class SpiderScraper():
     def __init__(self, spider_cls):
         self._spider_cls = spider_cls
 
-    def run(self, full=True) -> List[dict]:
+    def run(self, source_id: int, full=True) -> List[dict]:
         with NamedTemporaryFile() as f:
-            crawler = CrawlerScript(f, self._spider_cls, full)
+            crawler = CrawlerScript(f, source_id, self._spider_cls, full)
             crawler.start()
             crawler.join()
             return [json.loads(line) for line in f]
