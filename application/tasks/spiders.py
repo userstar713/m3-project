@@ -11,7 +11,6 @@ from application.spiders import (klwines,
                                  wine_com,
                                  wine_library)
 from application.db_extension.models import db, Source
-from application.caching import cache
 
 from application.scrapers import SpiderScraper
 
@@ -51,5 +50,5 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
         scraper = SpiderScraper(totalwine.TotalWineSpider)
     else:
         raise ValueError(f'No support for source with name {source.name}')
-    data = scraper.run(full=full)
+    data = scraper.run(source_id, full=full)
     return data

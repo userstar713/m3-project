@@ -518,7 +518,7 @@ class ProductProcessor:
         )
         if not source_product:
             logger.warning(
-                'Product not found:%s', product.name)
+                'Product not found:%s', product)
             return
         product_id = source_product.id
         self.updated_product_ids.append(product_id)
@@ -527,9 +527,12 @@ class ProductProcessor:
         )
         price = get_float_number(product.price)
         price_int = round(price * 100)
-        src_location_product.price = price
-        src_location_product.price_int = price_int
-        src_location_product.qoh = product.qoh
+        if src_location_product.price != price:
+            src_location_product.price = price
+        if src_location_product.price_int != price_int:
+            src_location_product.price_int = price_int
+        if product.qoh is not None:
+            src_location_product.qoh = product.qoh
 
         for (da_code, value) in product.as_dict().items():
             da = self.domain_attributes.get(da_code)
