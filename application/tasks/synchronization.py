@@ -1,8 +1,10 @@
 from typing import List, Iterable
+from sqlalchemy import func
 
 from celery import Celery
-from sqlalchemy import func
+
 from application.db_extension.models import db, PipelineSequence
+from application.tasks.pipeline import execute_pipeline
 from application.logging import logger
 
 from .processor import (
@@ -11,8 +13,6 @@ from .processor import (
     UpdateProduct,
     clean_sources
 )
-
-from .pipeline import execute_pipeline
 
 
 celery = Celery(__name__, autofinalize=False)
@@ -62,8 +62,7 @@ def execute_pipeline_task(_, source_id: int) -> None:
     sequence_id = db.session.query(func.max(PipelineSequence.id)).filter(
         PipelineSequence.source_id == source_id
     ).scalar()
-
-    execute_pipeline(source_id, sequence_id)
+    return execute_pipeline(source_id, sequence_id)
 
 
 @celery.task(bind=True)
