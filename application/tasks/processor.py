@@ -519,13 +519,15 @@ class ProductProcessor:
         if not source_product:
             logger.warning(
                 'Product not found:%s', product)
-            return
+            # TODO add new product
+            return True
         product_id = source_product.id
         self.updated_product_ids.append(product_id)
         src_location_product = SourceLocationProductProxy.get_by(
             source_product_id=product_id,
         )
         price = get_float_number(product.price)
+        logger.info('URL: %s', product.single_product_url)
         price_int = round(price * 100)
         if src_location_product.price != price:
             src_location_product.price = price

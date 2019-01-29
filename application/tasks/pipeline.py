@@ -22,7 +22,11 @@ ERROR = "error"
 logger = getLogger(__name__)
 
 
-def execute_pipeline(source_id: int,
+def execute_pipeline_inc(source_id: int, sequence_id: Optional[int] = None):
+    pass
+
+
+def execute_pipeline_full(source_id: int,
                      sequence_id: Optional[int] = None,
                      debug_product_search_str: Optional[str] = None
                      ) -> dict:
