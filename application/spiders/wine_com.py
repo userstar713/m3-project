@@ -178,14 +178,14 @@ class ParsedProduct(AbstractParsedProduct):
 
     def get_bottle_size(self) -> int:
         bottle_size = 750
-        if re.match(r'half-bottle', self.name, re.IGNORECASE):
+        if re.match(r'.*(half-bottle|half bottle|375ML)',
+                    self.name,
+                    re.IGNORECASE):
             bottle_size = 375
-        elif re.match(r'500\s*ML', self.name, re.IGNORECASE):
+        elif re.match(r'.*500\s*ML', self.name, re.IGNORECASE):
             bottle_size = 500
-        elif re.match(r'1\s*Liter', self.name, re.IGNORECASE):
+        elif re.match(r'.*Liter', self.name, re.IGNORECASE):
             bottle_size = 1000
-        elif re.match(r'1.5\s*Liter', self.name, re.IGNORECASE):
-            bottle_size = 1500
         return bottle_size
 
     def get_reviews(self) -> list:
