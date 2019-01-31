@@ -33,7 +33,7 @@ def prepare_products(source_id: int, products: Iterable,
 
 
 @celery.task(bind=True, name='tasks.process_product_list')
-def process_product_list_task(_, chunk: List[dict], full=True) -> None:
+def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     """
     Process list of products in ProductProcessor
     :param chunk:
@@ -42,6 +42,7 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> None:
     logger.info(f"Processing {len(chunk)} products")
     processor = ProductProcessor(full=full)
     add_new_products = False
+    products = []
     for i, product in enumerate(chunk):
         if full:
             p = Product(**product)
@@ -53,26 +54,27 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> None:
             new = processor.update_product(p)
             if new and not add_new_products:
                 add_new_products = True
+        products.append(p)
     if not full:
         processor.delete_old_products()
     processor.flush()
-    return add_new_products
+    return products, add_new_products
 
 
 @celery.task(bind=True)
-def execute_pipeline_task(_, new_products: bool,
-                          source_id: int, full=True) -> dict:
+def execute_pipeline_task(_, chunk: tuple, source_id: int, full=True) -> dict:
     """
     Final part of the pipeline processing
     :param source_id:
     :return:
     """
+    products, new_products = chunk
     sequence_id = db.session.query(func.max(PipelineSequence.id)).filter(
         PipelineSequence.source_id == source_id
     ).scalar()
     if full or new_products:
         return execute_pipeline_full(source_id, sequence_id)
-    return execute_pipeline_inc(source_id, sequence_id)
+    return execute_pipeline_inc(products, source_id, sequence_id)
 
 
 @celery.task(bind=True)

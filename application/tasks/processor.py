@@ -518,7 +518,7 @@ class ProductProcessor:
         )
         if not source_product:
             logger.warning(
-                'Product not found:%s', product)
+                'Product not found: %s', product)
             # TODO add new product
             return True
         product_id = source_product.id
