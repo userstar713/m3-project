@@ -8,7 +8,8 @@ from application.db_extension.routines import (validate_pipeline_run,
                                                seeding_products_func,
                                                assign_prototypes_to_products,
                                                assign_themes_to_products,
-                                               pipe_aggregate)
+                                               pipe_aggregate,
+                                               update_price_qoh)
 from application.db_extension.models import db
 from application.db_extension.models import PipelineSequence
 from .information_extraction import PipelineExtractor
@@ -22,7 +23,13 @@ ERROR = "error"
 logger = getLogger(__name__)
 
 
-def execute_pipeline(source_id: int,
+def execute_pipeline_inc(products: list, source_id: int,
+                         sequence_id: Optional[int] = None):
+    for product in products:
+        update_price_qoh()
+
+
+def execute_pipeline_full(source_id: int,
                      sequence_id: Optional[int] = None,
                      debug_product_search_str: Optional[str] = None
                      ) -> dict:

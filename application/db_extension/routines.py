@@ -259,6 +259,22 @@ def pipe_aggregate(source_id: int, sequence_id: int) -> List:
     return result
 
 
+def update_price_qoh(m_product_id: int, price: float, qoh: int):
+    q = ('SELECT * '
+         'FROM public.update_price_m3('
+         '    :m_product_id,'
+         '    :price,'
+         '    :qoh)'
+         )
+    db.session.execute(
+        q,
+        {'m_product_id': m_product_id,
+         'price': price,
+         'qoh': qoh}
+    ).first()
+    db.session.commit()
+
+
 def assign_to_products(
         f_name: str,
         source_id: int,

@@ -4,7 +4,10 @@ from sqlalchemy import func
 from celery import Celery
 
 from application.db_extension.models import db, PipelineSequence
-from application.tasks.pipeline import execute_pipeline
+from application.tasks.pipeline import (
+    execute_pipeline_full,
+    execute_pipeline_inc
+)
 from application.logging import logger
 
 from .processor import (
@@ -30,7 +33,7 @@ def prepare_products(source_id: int, products: Iterable,
 
 
 @celery.task(bind=True, name='tasks.process_product_list')
-def process_product_list_task(_, chunk: List[dict], full=True) -> None:
+def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     """
     Process list of products in ProductProcessor
     :param chunk:
@@ -38,6 +41,8 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> None:
     """
     logger.info(f"Processing {len(chunk)} products")
     processor = ProductProcessor(full=full)
+    add_new_products = False
+    products = []
     for i, product in enumerate(chunk):
         if full:
             p = Product(**product)
@@ -46,23 +51,30 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> None:
         else:
             p = UpdateProduct(**product)
             logger.info(f"Updating product # {i}")
-            processor.update_product(p)
+            new = processor.update_product(p)
+            if new and not add_new_products:
+                add_new_products = True
+        products.append(p)
     if not full:
         processor.delete_old_products()
     processor.flush()
+    return products, add_new_products
 
 
 @celery.task(bind=True)
-def execute_pipeline_task(_, source_id: int) -> None:
+def execute_pipeline_task(_, chunk: tuple, source_id: int, full=True) -> dict:
     """
     Final part of the pipeline processing
     :param source_id:
     :return:
     """
+    products, new_products = chunk
     sequence_id = db.session.query(func.max(PipelineSequence.id)).filter(
         PipelineSequence.source_id == source_id
     ).scalar()
-    return execute_pipeline(source_id, sequence_id)
+    if full or new_products:
+        return execute_pipeline_full(source_id, sequence_id)
+    return execute_pipeline_inc(products, source_id, sequence_id)
 
 
 @celery.task(bind=True)
@@ -105,12 +117,12 @@ def start_synchronization(source_id: int, full=True) -> str:
             | clean_sources_task.s(source_id)\
             | get_products_task.s(source_id)\
             | process_product_list_task.s() \
-            | execute_pipeline_task.si(source_id)
+            | execute_pipeline_task.s(source_id)
     else:
         job = task_execute_spider.si(source_id, full=full)\
             | get_products_task.s(source_id, full=full)\
             | process_product_list_task.s(full=full) \
-            | execute_pipeline_task.si(source_id)
+            | execute_pipeline_task.s(source_id, full=full)
     logger.info('Calling job.delay()')
     task = job.delay()
     return task.id
