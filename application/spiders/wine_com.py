@@ -145,12 +145,7 @@ class ParsedProduct(AbstractParsedProduct):
             image_link = self.r.xpath(
                 '//img[@class="pipHero_image-default"]/@src').extract_first()
         if image_link:
-            image_link = image_link.replace(
-                'w_767,c_fit,q_auto:good,fl_progressive',
-                'w_1080')
-            image_link = image_link.replace(
-                'h_50,c_fit,fl_progressive',
-                'w_1080')
+            image_link = re.sub("w_.*progressive", 'w_1080', image_link)
         if image_link.startswith('/'):
             image_link = image_link[1:]
         return '/'.join([BASE_URL, image_link])
@@ -178,14 +173,14 @@ class ParsedProduct(AbstractParsedProduct):
 
     def get_bottle_size(self) -> int:
         bottle_size = 750
-        if re.match(r'half-bottle', self.name, re.IGNORECASE):
+        if re.match(r'.*(half-bottle|half bottle|375ML)',
+                    self.name,
+                    re.IGNORECASE):
             bottle_size = 375
-        elif re.match(r'500\s*ML', self.name, re.IGNORECASE):
+        elif re.match(r'.*500\s*ML', self.name, re.IGNORECASE):
             bottle_size = 500
-        elif re.match(r'1\s*Liter', self.name, re.IGNORECASE):
+        elif re.match(r'.*Liter', self.name, re.IGNORECASE):
             bottle_size = 1000
-        elif re.match(r'1.5\s*Liter', self.name, re.IGNORECASE):
-            bottle_size = 1500
         return bottle_size
 
     def get_reviews(self) -> list:
