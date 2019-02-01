@@ -4,10 +4,7 @@ from sqlalchemy import func
 from celery import Celery
 
 from application.db_extension.models import db, PipelineSequence
-from application.tasks.pipeline import (
-    execute_pipeline_full,
-    execute_pipeline_inc
-)
+from application.tasks.pipeline import execute_pipeline
 from application.logging import logger
 
 from .processor import (
@@ -39,18 +36,24 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     :param chunk:
     :return:
     """
-    logger.info(f"Processing {len(chunk)} products")
-    processor = ProductProcessor(full=full)
+    logger.info("Processing %s products", len(chunk))
+    source_id = chunk[0]['source_id']
+    processor = ProductProcessor(source_id, full=full)
+    if not full:
+        processor.set_original_values()
     add_new_products = False
     products = []
     for i, product in enumerate(chunk):
         if full:
             p = Product(**product)
-            logger.info(f"Processing product # {i}")
+            logger.info("Processing product # %s", i)
             processor.process(p)
         else:
-            p = UpdateProduct(**product)
-            logger.info(f"Updating product # {i}")
+            if len(product) > 5:
+                p = Product(**product)
+            else:
+                p = UpdateProduct(**product)
+            logger.info("Updating product # %s, %s", i, len(product))
             new = processor.update_product(p)
             if new and not add_new_products:
                 add_new_products = True
@@ -73,8 +76,8 @@ def execute_pipeline_task(_, chunk: tuple, source_id: int, full=True) -> dict:
         PipelineSequence.source_id == source_id
     ).scalar()
     if full or new_products:
-        return execute_pipeline_full(source_id, sequence_id)
-    return execute_pipeline_inc(products, source_id, sequence_id)
+        return execute_pipeline(source_id, sequence_id)
+    return {}
 
 
 @celery.task(bind=True)
