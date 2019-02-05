@@ -548,8 +548,6 @@ class ProductProcessor:
         product_id = master_product.id
         self.updated_product_ids.append(product_id)
         price = get_float_number(product.price)
-        logger.info('PRODUCT %s', product)
-        logger.info('ORG VALUES %s', str(self.original_values.keys()))
         org_values = self.original_values.get(product_id)
         if not org_values:
             logger.warning(
