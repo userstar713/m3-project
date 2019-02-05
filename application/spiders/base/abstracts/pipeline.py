@@ -101,6 +101,8 @@ class BaseIncPipeline(ABC):
         return qoh
 
     def process_item(self, item, spider):
+        if not item['name']:
+            raise DropItem(f'Skipping invalid item {item}')
         qoh = item['qoh']
         if qoh is None:
             source_id = spider.settings['SOURCE_ID']
@@ -109,22 +111,22 @@ class BaseIncPipeline(ABC):
                 source_id=source_id,
             )
             if master_product:
-                    qoh = self.get_original_qoh(source_id, master_product.id)
-                    qoh_threshold = db.session.query(
-                        Source.min_qoh_threshold
-                    ).filter_by(
-                        id=source_id
-                    ).scalar()
-                    if qoh <= qoh_threshold:
-                        self.crawler.engine.crawl(
-                            Request(
-                                url=item['single_product_url'],
-                                callback=self.update_qoh,
-                                meta={'item': item},),
-                            spider,
-                        )
-                        raise DropItem(
-                            'Opening product detail page to read the qoh.')
+                qoh = self.get_original_qoh(source_id, master_product.id)
+                qoh_threshold = db.session.query(
+                    Source.min_qoh_threshold
+                ).filter_by(
+                    id=source_id
+                ).scalar()
+                if qoh <= qoh_threshold:
+                    self.crawler.engine.crawl(
+                        Request(
+                            url=item['single_product_url'],
+                            callback=self.update_qoh,
+                            meta={'item': item},),
+                        spider,
+                    )
+                    raise DropItem(
+                        'Opening product detail page to read the qoh.')
             else:
                 self.crawler.engine.crawl(
                     Request(

@@ -50,7 +50,11 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
             processor.process(p)
         else:
             if len(product) > 5:
-                p = Product(**product)
+                logger.info("Updating product # %s, %s", i, str(product))
+                try:
+                    p = Product(**product)
+                except Exception as e:
+                    logger.info(e)
             else:
                 p = UpdateProduct(**product)
             logger.info("Updating product # %s, %s", i, len(product))
