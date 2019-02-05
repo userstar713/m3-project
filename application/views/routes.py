@@ -59,7 +59,7 @@ def scrape(source_id: int) -> Response:
     '/source/<int:source_id>/execute_pipeline',
 )
 def execute_pipeline(source_id: int) -> Response:
-    status = execute_pipeline_task(source_id)
+    task = execute_pipeline_task.delay((False, False), source_id)
     return jsonify(
-        {'data': {'status': 'ok'}}
+        {'data': {'status': task.id}}
     )

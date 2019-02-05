@@ -1,12 +1,11 @@
 from typing import List, Iterable
+from sqlalchemy import func
 
 from celery import Celery
-from sqlalchemy import func
 from application import config
 from application.db_extension.models import db, PipelineSequence
 from application.logging import logger
 
-from .common import get_products_from_redis
 from .processor import (
     ProductProcessor,
     Product,
@@ -24,8 +23,8 @@ celery = Celery(
     backend=config.CELERY_RESULT_BACKEND
 )
 
-
-def prepare_products(source_id: int, products: Iterable, full=True) -> List[dict]:
+def prepare_products(source_id: int, products: Iterable,
+                     full=True) -> List[dict]:
     if full:
         res = [Product.from_raw(source_id, product).as_dict() for product in
                products]
@@ -35,65 +34,77 @@ def prepare_products(source_id: int, products: Iterable, full=True) -> List[dict
     return res
 
 
-@celery.task(bind=True)
-def process_product_list_task(_, chunk: List[dict], full=True) -> None:
+@celery.task(bind=True, name='tasks.process_product_list')
+def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     """
     Process list of products in ProductProcessor
     :param chunk:
     :return:
     """
-    logger.debug(f"Processing {len(chunk)} products")
-    processor = ProductProcessor(full=full)
+    logger.info("Processing %s products", len(chunk))
+    source_id = chunk[0]['source_id']
+    processor = ProductProcessor(source_id, full=full)
+    if not full:
+        processor.set_original_values()
+    add_new_products = False
+    products = []
     for i, product in enumerate(chunk):
         if full:
             p = Product(**product)
-            logger.info(f"Processing product # {i}")
+            logger.info("Processing product # %s", i)
             processor.process(p)
         else:
-            p = UpdateProduct(**product)
-            logger.info(f"Updating product # {i}")
-            processor.update_product(p)
+            if len(product) > 5:
+                logger.info("Updating product # %s, %s", i, str(product))
+                try:
+                    p = Product(**product)
+                except Exception as e:
+                    logger.info(e)
+            else:
+                p = UpdateProduct(**product)
+            logger.info("Updating product # %s, %s", i, len(product))
+            new = processor.update_product(p)
+            if new and not add_new_products:
+                add_new_products = True
+        products.append(p)
     if not full:
         processor.delete_old_products()
     processor.flush()
+    return products, add_new_products
 
 
 @celery.task(bind=True)
-def execute_pipeline_task(_, source_id: int) -> None:
+def execute_pipeline_task(_, chunk: tuple, source_id: int, full=True) -> dict:
     """
     Final part of the pipeline processing
     :param source_id:
     :return:
     """
+    products, new_products = chunk
     sequence_id = db.session.query(func.max(PipelineSequence.id)).filter(
         PipelineSequence.source_id == source_id
     ).scalar()
-
-    execute_pipeline(source_id, sequence_id)
+    if full or new_products:
+        return execute_pipeline(source_id, sequence_id)
+    return {}
 
 
 @celery.task(bind=True)
-def clean_sources_task(_, source_id: int) -> None:
-    data_exists = bool(get_products_from_redis(source_id))
-    if data_exists:
+def clean_sources_task(_, data: List[dict], source_id: int) -> None:
+    if data:
         clean_sources(source_id)
+    return data
 
 
 @celery.task(bind=True)
-def get_products_task(_, source_id: int, full=True) -> List[dict]:
+def get_products_task(_, products: List[dict], source_id: int,
+                      full=True) -> List[dict]:
     """
     Get raw data from the redis and return it as dictionaries
     :param source_id:
     :return:
     """
-    products = get_products_from_redis(source_id, full=full)
-    # return list(chunkify(prepare_products(source_id, products), 500))
     return prepare_products(source_id, products, full=full)
-
-
-@celery.task(bind=True)
-def aloha(_):
-    logger.info('ALOHA')
 
 
 def queue_sequence(source_id: int):
@@ -106,6 +117,11 @@ def queue_sequence(source_id: int):
         db.session.commit()
 
 
+@celery.task(bind=True, name='tasks.start_synchronization_task')
+def start_synchronization_task(_, source_id: int, full=True):
+    start_synchronization(source_id, full=full)
+
+
 def start_synchronization(source_id: int, full=True) -> str:
     from .spiders import task_execute_spider
     sync_type = full and 'Full' or 'Incremental'
@@ -115,15 +131,15 @@ def start_synchronization(source_id: int, full=True) -> str:
     # if it is set, don't run the scraper, use the data from
     if full:
         job = task_execute_spider.si(source_id, full=full)\
-            | clean_sources_task.si(source_id)\
-            | get_products_task.si(source_id)\
+            | clean_sources_task.s(source_id)\
+            | get_products_task.s(source_id)\
             | process_product_list_task.s() \
-            | execute_pipeline_task.si(source_id)
+            | execute_pipeline_task.s(source_id)
     else:
         job = task_execute_spider.si(source_id, full=full)\
-            | get_products_task.si(source_id, full=full)\
+            | get_products_task.s(source_id, full=full)\
             | process_product_list_task.s(full=full) \
-            | execute_pipeline_task.si(source_id)
+            | execute_pipeline_task.s(source_id, full=full)
     logger.info('Calling job.delay()')
     task = job.delay()
     return task.id

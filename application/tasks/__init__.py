@@ -1,5 +1,7 @@
+from celery.schedules import crontab
 from application.db_extension.models import db
 from .synchronization import start_synchronization, celery
+
 
 def init_celery(app):
 
@@ -15,13 +17,15 @@ def init_celery(app):
     # subclass task base for app context
     # http://flask.pocoo.org/docs/0.12/patterns/celery/
     TaskBase = celery.Task
-    celery.conf.task_routes = {'application.tasks.*': {'queue': 'scraping'}}
+    celery.conf.task_routes = {'tasks.*': {'queue': 'scraping'}}
     celery.conf.beat_schedule = {
-        'aloha': {
-            'task': 'application.tasks.synchronization.aloha',
-            'schedule': 60,  # 5 minutes
+        'full_sync_klwines': {
+            'task': 'tasks.synchronization.start_synchronization_task',
+            'schedule': 180,
             'options': {'queue': 'scraping'},
-    }}
+            'args': (1, True)}}
+
+
     class AppContextTask(TaskBase):
         abstract = True
         def __call__(self, *args, **kwargs):

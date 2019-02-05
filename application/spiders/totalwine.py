@@ -22,15 +22,6 @@ from application.spiders.base.abstracts.product import (
 )
 
 BASE_URL = 'https://www.totalwine.com'
-REVIEWS_URL = (
-    'https://api.bazaarvoice.com/data/batch.json?'
-    'passkey=caXf20wfT6xLqTTQsMoGuj0lZGIdLvCKtusCWAIn0zU9E&'
-    'apiversion=5.5&&resource.q0=reviews&filter.q0=isratingsonly:eq:false'
-    '&filter.q0=productid:eq:{0}&filter.q0=contentlocale:eq:en_US&'
-    'stats.q0=reviews&filteredstats.q0=reviews&include.q0=authors,products,'
-    'comments&filter_reviews.q0=contentlocale:eq:en_US&filter_reviewcomments'
-    '.q0=contentlocale:eq:en_US&filter_comments.q0=contentlocale:eq:en_US')
-
 
 class ParsedListPageProduct(AbstractListProduct):
 
@@ -168,25 +159,34 @@ class ParsedProduct(AbstractParsedProduct):
         return additional
 
     def get_reviews(self) -> list:
-        """Reviews for totalwine.com are loaded with XHR request from the
-        https://api.bazaarvoice.com. We made similar request and put it's
-        result into `request.meta['reviews_json']`"""
         reviews = []
-        reviews_json = self.r.meta['reviews_json']
-        review_results = reviews_json['BatchedResults']['q0']['Results']
-        for review_result in review_results:
-            score = review_result['Rating']
-            score *= 20
-            score_str = str(score)
-            reviewer_name = review_result['UserNickname']
-            content = (review_result['ReviewText'] or
-                       review_result['Title'] or '')
-            content = self.clean(content)
-            reviews.append({'reviewer_name': reviewer_name,
-                            'score_num': score,
-                            'score_str': score_str,
-                            'content': content,
-                            })
+        rows = self.r.xpath(
+            '//*[contains(@class, "detailsTabReview_")]'
+        )
+        for row in rows:
+            score_num = None
+            score_str = row.xpath(
+                'div/div/div/div/text()'
+            ).extract_first()
+            if score_str:
+                score_num = int(score_str)
+            reviewer_name = row.xpath(
+                'div/div[contains(@class, "ratingSource_")]/text()'
+            ).extract_first()
+            if reviewer_name:
+                reviewer_name = self.clean(reviewer_name)
+
+            content = row.xpath(
+                'div[2]/text()'
+            ).extract_first()
+            if content:
+                content = self.clean(content)
+            if reviewer_name and score_str:
+                reviews.append({'reviewer_name': reviewer_name,
+                                'score_num': score_num,
+                                'score_str': score_str,
+                                'content': content,
+                                })
         return reviews
 
     def get_qoh(self) -> int:
@@ -351,14 +351,10 @@ class TotalWineSpider(AbstractSpider):
                     yield self.parse_list_product(row)
             for link in links:
                 absolute_url = BASE_URL + link
-                product_id = re.findall(r'\d+', link)[0]
-                reviews_url = REVIEWS_URL.format(product_id)
-                reviews_json = requests.get(reviews_url).json()
                 yield Request(
                     absolute_url,
                     callback=self.parse_product,
-                    meta={'wine_type': response.meta.get('wine_type'),
-                          'reviews_json': reviews_json},
+                    meta={'wine_type': response.meta.get('wine_type')},
                     priority=1)
 
     @property
@@ -383,11 +379,13 @@ class FilterPipeline(BaseFilterPipeline):
 
 class IncFilterPipeline(BaseIncPipeline):
 
-    pass
+    def parse_detail_page(self, response):
+        product = ParsedProduct(response)
+        yield product.as_dict()
 
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, TotalWineSpider, full_scrape=False)
+    settings = get_spider_settings(tmp_file, 33, TotalWineSpider)
     process = CrawlerProcess(settings)
     process.crawl(TotalWineSpider)
     process.start()

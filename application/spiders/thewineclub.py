@@ -51,6 +51,14 @@ class ParsedListPageProduct(AbstractListProduct):
                 'td[3]/table/tr/td/span[@class="SalePrice"]/text()'
             ).extract_first()
         if not s:
+            s = self.s.xpath(
+                'td[2]//span[@class="RegularPrice"]/text()'
+            ).extract_first()
+        if not s:
+            s = self.s.xpath(
+                'td[2]//span[@class="SalePrice"]/text()'
+            ).extract_first()
+        if not s:
             return 0
         s = self.clean(s)
         s = s.replace('$', '').replace(',', '')
@@ -396,9 +404,13 @@ class IncFilterPipeline(BaseIncPipeline):
     def get_qoh(self, response):
         return get_qoh(response)
 
+    def parse_detail_page(self, response):
+        product = ParsedProduct(response)
+        yield product.as_dict()
+
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, TheWineClubSpider, full_scrape=False)
+    settings = get_spider_settings(tmp_file, 32, TheWineClubSpider, full_scrape=False)
     process = CrawlerProcess(settings)
     process.crawl(TheWineClubSpider)
     process.start()

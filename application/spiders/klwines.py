@@ -39,13 +39,22 @@ def get_qoh(response):
     return qoh
 
 
+def normalize_name(name: str) ->str:
+    name = re.sub(r' \((Elsewhere|Previously) \$\d*\)',
+                  '',
+                  name)
+    return name
+
+
 class ParsedListPageProduct(AbstractListProduct):
 
     def get_name(self) -> str:
         name = self.s.xpath(
             'div[@class="productImg"]/a/@title'
         ).extract_first()
-        return self.clean(name or '')
+        name = self.clean(name or '')
+        name = normalize_name(name)
+        return name
 
     def get_price(self) -> float:
         s = self.s.xpath(
@@ -82,9 +91,11 @@ class ParsedProduct(AbstractParsedProduct):
         return value
 
     def get_name(self) -> str:
-        return self.clean(self.r.xpath(
+        name = self.clean(self.r.xpath(
             '//div[@class="result-desc"]/h1/text()'
-        )[0].extract())
+        ).extract_first())
+        name = normalize_name(name)
+        return name
 
     def get_vintage(self) -> str:
         res = ''
@@ -346,9 +357,13 @@ class IncFilterPipeline(BaseIncPipeline):
     def get_qoh(self, response):
         return get_qoh(response)
 
+    def parse_detail_page(self, response):
+        product = ParsedProduct(response)
+        yield product.as_dict()
+
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, KLWinesSpider, full_scrape=False)
+    settings = get_spider_settings(tmp_file, 1, KLWinesSpider, full_scrape=False)
     process = CrawlerProcess(settings)
     process.crawl(KLWinesSpider)
     process.start()

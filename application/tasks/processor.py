@@ -3,6 +3,7 @@ import re
 from datetime import datetime
 from typing import NamedTuple
 from funcy import log_durations
+from sqlalchemy import text
 from sqlalchemy.sql.expression import func
 from application.caching import cache
 from application.db_extension.models import (db,
@@ -17,7 +18,8 @@ from application.db_extension.models import (db,
                                              SourceLocationProductProxy)
 from application.db_extension.routines import (
     get_default_category_id,
-    attribute_lookup)
+    attribute_lookup,
+    update_price_qoh)
 from application.utils import listify, get_float_number
 from application.logging import logger
 from .helpers import DATATYPES, remove_diacritics
@@ -350,7 +352,8 @@ class DomainDictionaryCache:
 
 
 class ProductProcessor:
-    def __init__(self, full=True):
+    def __init__(self, source_id: int, full=True):
+        self.source_id = source_id
         self.full = full
         self.updated_product_ids = []
         self.domain_attributes = {row.code: row.__dict__ for row in
@@ -361,6 +364,7 @@ class ProductProcessor:
         self.product = None
         self.sav_bulk_adder = BulkAdder(SourceAttributeValue)
         self.review_bulk_adder = BulkAdder(SourceReview)
+        self.original_values = {}
         self.drc = DomainReviewers()
         # self.nlp_synonyms = get_nlp_ngrams() TODO deprecated??
 
@@ -510,26 +514,51 @@ class ProductProcessor:
             'extra_words': prepared['extra_words']
         }
 
+    def set_original_values(self) -> None:
+        q = text(
+            "SELECT ov.* "
+            "FROM ("
+            "      SELECT master_product_id,"
+            "             jsonb_agg(json_build_object('attr_id', attribute_id, 'value', values)) attr_json"
+            "      FROM ("
+            "            SELECT master_product_id, (jsonb_array_elements(value#>'{{attributes}}')->'attr_id')::text::integer attribute_id, jsonb_array_elements(value#>'{{attributes}}')->'values'->0->'v_orig' AS values"
+            "            FROM out_vectors"
+            "            WHERE sequence_id=(SELECT max(id) FROM pipeline_sequence WHERE source_id=:source_id) ) s "
+            "WHERE attribute_id IN (1,21) "
+            "GROUP BY master_product_id) ov"
+        )
+        res = db.session.execute(
+            q,
+            params={'source_id': self.source_id}
+        ).fetchall()
+        self.original_values = dict(res)
+
     def update_product(self, product: UpdateProduct):
         self.product = product
-        source_product = SourceProductProxy.get_by(
+        master_product = MasterProductProxy.get_by(
             name=product.name,
             source_id=product.source_id,
         )
-        if not source_product:
-            logger.warning(
-                'Product not found:%s', product.name)
-            return
-        product_id = source_product.id
+        if not master_product:
+            logger.info(
+                'Adding new product: %s', product)
+            self.process(product)
+            return True
+
+        product_id = master_product.id
         self.updated_product_ids.append(product_id)
-        src_location_product = SourceLocationProductProxy.get_by(
-            source_product_id=product_id,
-        )
         price = get_float_number(product.price)
-        price_int = round(price * 100)
-        src_location_product.price = price
-        src_location_product.price_int = price_int
-        src_location_product.qoh = product.qoh
+        org_values = self.original_values.get(product_id)
+        if not org_values:
+            logger.warning(
+                'No out_vectors found for master product: \nID: %s\nName: %s',
+                product_id, product.name)
+            return False
+        org_price = [r['value'] for r in org_values if r['attr_id'] == 1][0]
+        org_qoh = [r['value'] for r in org_values if r['attr_id'] == 21][0]
+        org_price, org_qoh = round(org_price, 4), round(org_qoh)
+        if org_price != price or org_qoh != product.qoh:
+            update_price_qoh(product_id, price, product.qoh)
 
         for (da_code, value) in product.as_dict().items():
             da = self.domain_attributes.get(da_code)
@@ -539,14 +568,14 @@ class ProductProcessor:
             sav = db.session.query(
                 SourceAttributeValue
             ).filter_by(
-                source_product_id=product_id,
+                master_product_id=product_id,
                 attribute_id=da_id
             ).first()
             if sav.datatype == 'integer':  # qoh
                 sav.value_integer = value
             elif sav.datatype == 'currency':  # price
                 sav.value_float = value
-        db.session.commit()
+        return False
 
     @log_durations(logger.info, unit='ms')
     def process(self, product: Product):
@@ -622,6 +651,7 @@ class ProductProcessor:
         return master_product_id
 
     def delete_old_products(self):
+        # TODO clean out_vectors also
         if self.updated_product_ids:
             db.session.query(
                 SourceAttributeValue

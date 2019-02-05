@@ -14,7 +14,7 @@ CACHE_TYPE = getenv('CACHE_TYPE',
 #
 # Redis settings (Flask-Caching)
 #
-REDIS_HOST = getenv('REDIS_HOST', 'redis://redis:6379')
+REDIS_HOST = getenv('REDIS_HOST', 'redis://localhost:6379')
 assert REDIS_HOST.startswith('redis://')
 REDIS_DB = int(getenv('REDIS_DB', 1))
 
@@ -28,7 +28,7 @@ BASE_PATH = Path(__file__).parent
 
 SQLALCHEMY_DATABASE_URI = getenv('SQLALCHEMY_DATABASE_URI',
                                  'postgresql://'
-                                 'postgres:password@db:5432/m3')
+                                 'postgres:password@localhost:5432/m3')
 
 # https://github.com/mitsuhiko/flask-sqlalchemy/issues/365
 SQLALCHEMY_TRACK_MODIFICATIONS = False
