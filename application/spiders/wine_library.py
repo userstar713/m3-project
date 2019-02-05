@@ -369,6 +369,10 @@ class IncFilterPipeline(BaseIncPipeline):
     def get_qoh(self, response):
         return get_qoh(response)
 
+    def parse_detail_page(self, response):
+        product = ParsedProduct(response)
+        yield product.as_dict()
+
 
 def get_data(tmp_file: IO) -> None:
     settings = get_spider_settings(tmp_file, WineLibrarySpider, full_scrape=True)

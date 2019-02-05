@@ -379,7 +379,9 @@ class FilterPipeline(BaseFilterPipeline):
 
 class IncFilterPipeline(BaseIncPipeline):
 
-    pass
+    def parse_detail_page(self, response):
+        product = ParsedProduct(response)
+        yield product.as_dict()
 
 
 def get_data(tmp_file: IO) -> None:

@@ -97,7 +97,7 @@ class BaseIncPipeline(ABC):
         if not res:
             return 0
         original_values = dict(res)
-        qoh = round(original_values['value'])
+        qoh = round(original_values['attr_json'][0]['value'])
         return qoh
 
     def process_item(self, item, spider):
