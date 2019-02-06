@@ -34,7 +34,7 @@ def prepare_products(source_id: int, products: Iterable,
     return res
 
 
-@celery.task(bind=True, name='tasks.process_product_list')
+@celery.task(bind=True)
 def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     """
     Process list of products in ProductProcessor
@@ -117,7 +117,7 @@ def queue_sequence(source_id: int):
         db.session.commit()
 
 
-@celery.task(bind=True, name='tasks.start_synchronization_task')
+@celery.task(bind=True)
 def start_synchronization_task(_, source_id: int, full=True):
     start_synchronization(source_id, full=full)
 

@@ -17,13 +17,35 @@ def init_celery(app):
     # subclass task base for app context
     # http://flask.pocoo.org/docs/0.12/patterns/celery/
     TaskBase = celery.Task
-    celery.conf.task_routes = {'tasks.*': {'queue': 'scraping'}}
+    celery.conf.task_routes = {'application.tasks.*': {'queue': 'scraping'}}
+    base_task_name = 'application.tasks.synchronization.start_synchronization_task'
     celery.conf.beat_schedule = {
-        'full_sync_klwines': {
-            'task': 'tasks.synchronization.start_synchronization_task',
-            'schedule': 180,
+        'full_klwines_sync': {
+            'task': base_task_name,
+            'schedule': crontab(hour='22', minute=0),
             'options': {'queue': 'scraping'},
-            'args': (1, True)}}
+            'args': (1, True)},
+        'full_wine_library_sync': {
+            'task': base_task_name,
+            'schedule': crontab(hour='22', minute=0),
+            'options': {'queue': 'scraping'},
+            'args': (2, True)},
+        'full_wine_com_sync': {
+            'task': base_task_name,
+            'schedule': crontab(hour='22', minute=0),
+            'options': {'queue': 'scraping'},
+            'args': (3, True)},
+        'full_wine_club_sync': {
+            'task': base_task_name,
+            'schedule': crontab(hour='22', minute=0),
+            'options': {'queue': 'scraping'},
+            'args': (4, True)},
+        'full_totalwine_sync': {
+            'task': base_task_name,
+            'schedule': crontab(hour='22', minute=0),
+            'options': {'queue': 'scraping'},
+            'args': (5, True)},
+    }
 
 
     class AppContextTask(TaskBase):

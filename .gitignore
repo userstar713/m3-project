@@ -4,3 +4,5 @@ dev_data/
 *.swp
 *.orig
 application/spiders/*.txt
+celerybeat-schedule
+celerybeat.pid
