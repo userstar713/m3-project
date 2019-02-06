@@ -20,7 +20,8 @@ def index():
 
 
 @seller_integration_bp.route(
-    '/source/<int:source_id>/sync/',
+    '/source/<int:source_id>/sync',
+    strict_slashes=False
 )
 def sync(source_id: int) -> Response:
     # content = request.get_json()
@@ -55,7 +56,7 @@ def scrape(source_id: int) -> Response:
 
 
 @seller_integration_bp.route(
-    '/source/<int:source_id>/execute_pipeline/',
+    '/source/<int:source_id>/execute_pipeline',
 )
 def execute_pipeline(source_id: int) -> Response:
     task = execute_pipeline_task.delay((False, False), source_id)
