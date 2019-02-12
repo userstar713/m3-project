@@ -43,7 +43,9 @@ class ParsedListPageProduct(AbstractListProduct):
         name = self.s.xpath(
             'div/div/h5/a/span[@class="js-elip-multi"]/text()'
         ).extract_first()
-        return self.clean(name or '')
+        if name:
+            name = self.clean(name.strip())
+        return name
 
     def get_price(self) -> float:
         s = self.s.xpath(
@@ -79,9 +81,12 @@ class ParsedProduct(AbstractParsedProduct):
         self.result['description'] = self.get_description()
 
     def get_name(self) -> str:
-        return self.r.xpath(
+        name = self.r.xpath(
             '//h1[@class="h2 h-sans product-pg-title"]/text()'
-        )[0].extract()
+        ).extract_first()
+        if name:
+            name = self.clean(name.strip())
+        return name
 
     def get_characteristics(self) -> str:
         return self.additional['characteristics']
