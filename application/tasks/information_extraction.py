@@ -431,21 +431,3 @@ class PipelineExtractor:
                 'attributes': attributes
             })
         return result
-
-
-def get_domain_attributes_from_db(**kwargs):
-    rows = db.session.query(DomainAttribute).filter_by(**kwargs)
-    # extract and convert to list
-    output = []
-    for row in rows:
-        obj = {
-            'id': row.id,
-            'code': row.code,
-            'extract_content_support': row.extract_content_support,
-            'datatype': row.datatype,
-            'should_extract_values': row.should_extract_values,
-            'should_extract_from_name': row.should_extract_from_name
-        }
-        output.append(obj)
-
-    return output

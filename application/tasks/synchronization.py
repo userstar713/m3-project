@@ -41,6 +41,9 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     :param chunk:
     :return:
     """
+    if not chunk:
+        return [], False
+
     logger.info("Processing %s products", len(chunk))
     source_id = chunk[0]['source_id']
     processor = ProductProcessor(source_id, full=full)
@@ -81,10 +84,12 @@ def execute_pipeline_task(_, chunk: tuple, source_id: int, full=True) -> dict:
     :return:
     """
     products, new_products = chunk
-    sequence_id = db.session.query(func.max(PipelineSequence.id)).filter(
-        PipelineSequence.source_id == source_id
-    ).scalar()
-    if full or new_products:
+    if products and (full or new_products):
+        sequence_id = db.session.query(
+            func.max(PipelineSequence.id)
+        ).filter(
+            PipelineSequence.source_id == source_id
+        ).scalar()
         return execute_pipeline(source_id, sequence_id)
     return {}
 
@@ -104,6 +109,8 @@ def get_products_task(_, products: List[dict], source_id: int,
     :param source_id:
     :return:
     """
+    if not products:
+        logger.info('No products scraped for the source_id=%s', source_id)
     return prepare_products(source_id, products, full=full)
 
 

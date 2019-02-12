@@ -112,7 +112,6 @@ def execute_pipeline(source_id: int,
     set_completion_status(sequence=sequence, source_id=source_id)
     db.session.commit()
 
-    print(sequence.__dict__)
     logger.info(
         f'pipeline_execute: pipeline processing is completed,'
         f' timetaken={datetime.now() - start}')
