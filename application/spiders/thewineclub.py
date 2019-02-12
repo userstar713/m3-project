@@ -252,7 +252,7 @@ class TheWineClubSpider(AbstractSpider):
 
     def start_requests(self) -> Iterator[Dict]:
         yield Request(
-            f'{BASE_URL}/main.asp?request=CHECKOUT&login=Y',
+            f'{BASE_URL}/main.asp?request=SIGNIN&',
             callback=self.login
         )
 
@@ -260,18 +260,8 @@ class TheWineClubSpider(AbstractSpider):
         pass
 
     def login(self, response: Response) -> Iterator[Dict]:
-        headers = {
-            'Accept': '*/*',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest',
-            'Content-Length': '110',
-            'Connection': 'keep-alive',
-
-        }
         yield FormRequest.from_response(
             response,
-            formxpath='//form[@id="validForm"]',
             formdata={'username': self.LOGIN,
                       'password': self.PASSWORD,
                       'ISPASS': 'Y',
@@ -279,7 +269,6 @@ class TheWineClubSpider(AbstractSpider):
                       'goto': '',
                       'transid': '',
                       },
-            headers=headers,
             callback=self.parse_wine_types
         )
 
@@ -410,7 +399,7 @@ class IncFilterPipeline(BaseIncPipeline):
 
 
 def get_data(tmp_file: IO) -> None:
-    settings = get_spider_settings(tmp_file, 32, TheWineClubSpider, full_scrape=False)
+    settings = get_spider_settings(tmp_file, 32, TheWineClubSpider, full_scrape=True)
     process = CrawlerProcess(settings)
     process.crawl(TheWineClubSpider)
     process.start()
