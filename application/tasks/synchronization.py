@@ -60,6 +60,7 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
             if len(product) > 5:
                 logger.info("Updating product # %s, %s", i, str(product))
                 try:
+                    product = Product.from_raw(source_id, product).as_dict()
                     p = Product(**product)
                 except Exception as e:
                     logger.info(e)

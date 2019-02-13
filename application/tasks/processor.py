@@ -652,44 +652,53 @@ class ProductProcessor:
 
     def delete_old_products(self):
         # TODO clean out_vectors also
-        if self.updated_product_ids:
-            db.session.query(
-                SourceAttributeValue
-            ).filter(
-                SourceAttributeValue.source_product_id.notin_(
-                    self.updated_product_ids
-                ),
-                SourceAttributeValue.source_id==self.product.source_id
-            ).delete(synchronize_session=False)
-            db.session.query(
-                SourceProductProxy
-            ).filter(
-                SourceProductProxy.id.notin_(
-                    self.updated_product_ids
-                ),
-                SourceProductProxy.source_id==self.product.source_id
-            ).delete(synchronize_session=False)
+        if not self.updated_product_ids:
+            return
 
-            location_ids = db.session.query(
-                source_location.SourceLocation.id
-            ).filter_by(
-                source_id=self.product.source_id
-            ).first()
-            db.session.query(
-                SourceLocationProductProxy
-            ).filter(
-                SourceLocationProductProxy.source_product_id.notin_(
-                    self.updated_product_ids),
-                SourceLocationProductProxy.source_location_id==location_ids[0]
-            ).delete(synchronize_session=False)
-            db.session.query(
-                SourceReview
-            ).filter(
-                SourceReview.source_product_id.notin_(
-                    self.updated_product_ids),
-                SourceReview.source_id==self.product.source_id
-            ).delete(synchronize_session=False)
-            db.session.commit()
+        db.session.query(
+            SourceAttributeValue
+        ).filter(
+            SourceAttributeValue.master_product_id.notin_(
+                self.updated_product_ids
+            ),
+            SourceAttributeValue.source_id==self.source_id
+        ).delete(synchronize_session=False)
+        deleted_products = db.session.query(
+            SourceProductProxy
+        ).filter(
+            SourceProductProxy.master_product_id.notin_(
+                self.updated_product_ids
+            ),
+            SourceProductProxy.source_id==self.source_id
+        )
+        deleted_master_products = [x.master_product_id for x in deleted_products]
+        db.session.query(
+            MasterProductProxy
+        ).filter(
+            MasterProductProxy.id.in_(deleted_master_products)
+        ).update({'deleted': True}, synchronize_session=False)
+        deleted_products.delete(synchronize_session=False)
+
+        location_ids = db.session.query(
+            source_location.SourceLocation.id
+        ).filter_by(
+            source_id=self.source_id
+        ).first()
+        db.session.query(
+            SourceLocationProductProxy
+        ).filter(
+            SourceLocationProductProxy.source_product_id.notin_(
+                self.updated_product_ids),
+            SourceLocationProductProxy.source_location_id==location_ids[0]
+        ).delete(synchronize_session=False)
+        db.session.query(
+            SourceReview
+        ).filter(
+            SourceReview.source_product_id.notin_(
+                self.updated_product_ids),
+            SourceReview.source_id==self.source_id
+        ).delete(synchronize_session=False)
+        db.session.commit()
 
 
 def clean_sources(source_id: int) -> None:
