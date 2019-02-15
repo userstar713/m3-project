@@ -222,7 +222,7 @@ class UpdateProduct(NamedTuple):
             return UpdateProduct(**_product)
 
     def as_dict(self) -> dict:
-        return self._asdict()
+        return dict(self._asdict())
 
 
 class Product(NamedTuple):
@@ -539,11 +539,6 @@ class ProductProcessor:
             name=product.name,
             source_id=product.source_id,
         )
-        if not master_product:
-            logger.info(
-                'Adding new product: %s', product)
-            self.process(product)
-            return True
 
         product_id = master_product.id
         self.updated_product_ids.append(product_id)
@@ -553,7 +548,7 @@ class ProductProcessor:
             logger.warning(
                 'No out_vectors found for master product: \nID: %s\nName: %s',
                 product_id, product.name)
-            return False
+            return
         org_price = [r['value'] for r in org_values if r['attr_id'] == 1][0]
         org_qoh = [r['value'] for r in org_values if r['attr_id'] == 21][0]
         org_price, org_qoh = round(org_price, 4), round(org_qoh)
@@ -575,7 +570,7 @@ class ProductProcessor:
                 sav.value_integer = value
             elif sav.datatype == 'currency':  # price
                 sav.value_float = value
-        return False
+        return
 
     @log_durations(logger.info, unit='ms')
     def process(self, product: Product):
@@ -583,7 +578,7 @@ class ProductProcessor:
         master_product_id, source_product_id = self.create_master_and_source()
         if not master_product_id:
             return False
-
+        self.updated_product_ids.append(master_product_id)
         location_ids = db.session.query(
             source_location.SourceLocation.id
         ).filter_by(

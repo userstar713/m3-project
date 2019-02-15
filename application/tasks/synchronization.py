@@ -52,24 +52,18 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     add_new_products = False
     products = []
     for i, product in enumerate(chunk):
-        if full:
+        logger.info("Processing product # %s", i)
+        if not full and len(product) > 5:
+            product = Product.from_raw(source_id, product).as_dict()
             p = Product(**product)
-            logger.info("Processing product # %s", i)
+            processor.process(p)
+            add_new_products = True
+        elif full:
+            p = Product(**product)
             processor.process(p)
         else:
-            if len(product) > 5:
-                logger.info("Updating product # %s, %s", i, str(product))
-                try:
-                    product = Product.from_raw(source_id, product).as_dict()
-                    p = Product(**product)
-                except Exception as e:
-                    logger.info(e)
-            else:
-                p = UpdateProduct(**product)
-            logger.info("Updating product # %s, %s", i, len(product))
-            new = processor.update_product(p)
-            if new and not add_new_products:
-                add_new_products = True
+            p = UpdateProduct(**product)
+            processor.update_product(p)
         products.append(p)
     if not full:
         processor.delete_old_products()
