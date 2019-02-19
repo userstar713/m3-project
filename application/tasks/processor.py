@@ -9,6 +9,7 @@ from application.caching import cache
 from application.db_extension.models import (db,
                                              DomainAttribute,
                                              MasterProductProxy,
+                                             Source,
                                              SourceProductProxy,
                                              SourceAttributeValue,
                                              DomainReviewer,
@@ -366,7 +367,16 @@ class ProductProcessor:
         self.review_bulk_adder = BulkAdder(SourceReview)
         self.original_values = {}
         self.drc = DomainReviewers()
+        self.overrides = self._get_overrides(source_id)
         # self.nlp_synonyms = get_nlp_ngrams() TODO deprecated??
+
+    def _get_overrides(self, source_id: int) -> list:
+        overrides = db.session.query(
+            Source.overrides
+        ).filter_by(
+            id=source_id
+        ).first()[0]
+        return overrides or []
 
     def flush(self):
         self.sav_bulk_adder.flush()
@@ -420,9 +430,16 @@ class ProductProcessor:
         result = []
         value = listify(value)
         for prop in value:
+            for override in self.overrides:
+                if da_code == override.get('attr_code', ''):
+                    if override.get('str'):
+                        if re.search(override['str'],
+                                     self.product.name,
+                                     re.IGNORECASE):
+                            prop = override['attr_value']
+            val = prop
             # If product property is an array and datatype = node_id
             # then find the node_id_value again for each item.
-            val = prop
             node_id = None
             if datatype == 'node_id' and prop:
                 node_id = get_domain_taxonomy_node_id_from_dict(
@@ -449,7 +466,6 @@ class ProductProcessor:
                     res['value_float'] = val
                 elif datatype == 'integer':
                     res['value_integer'] = val
-
             result.append(res)
         return result
 
