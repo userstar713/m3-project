@@ -94,7 +94,7 @@ class ParsedProduct(AbstractParsedProduct):
 
     def get_sku(self) -> str:
         return self.r.xpath(
-            '//div[@class="prodItemStock_addCart"]/@data-sku'
+            '//button[@class="prodItemStock_addCart"]/@data-sku'
         ).extract_first()
 
     def get_wine_type(self):
