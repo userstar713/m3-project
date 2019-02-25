@@ -32,7 +32,13 @@ class BaseFilterPipeline(ABC):
         self._check_qoh(item)
         self._check_prearrival(item)
         self._check_multipack(item)
+        self._check_sku(item)
         return item
+
+    def _check_sku(self, item: dict):
+        if not item['sku']:
+            raise DropItem(
+                f'Skipping product with missing SKU: {item}')
 
     def _check_bottle_size(self, item: dict):
         if item['bottle_size'] != 750:
