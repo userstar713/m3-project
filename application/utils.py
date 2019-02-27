@@ -17,6 +17,7 @@ def listify(arg: Any) -> List:
         arg = [arg, ]
     return arg
 
+
 def get_float_number(number):
     if not number:
         return None
@@ -24,6 +25,7 @@ def get_float_number(number):
         return float(number or 0)
     except ValueError:
         return None
+
 
 def remove_duplicates(l: List) -> List:
     """
@@ -41,6 +43,8 @@ def remove_duplicates(l: List) -> List:
             result.append(item)
     return result
 
+
 def split_to_sentences(content: str) -> List:
     pattern = r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<![A-Z]\.)(?<=\.|\?)\s'
     return re.split(pattern, content)
+
