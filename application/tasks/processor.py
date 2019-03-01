@@ -32,15 +32,15 @@ def filter_brands(attributes: list) -> list:
     return [a for a in attributes if a['code'] == 'brand']
 
 
-def get_brand(name: str) -> str:
+def get_brand(source_id: int, name: str) -> str:
     unaccented_name = remove_diacritics(name)
-    brands = get_brands(unaccented_name)
+    brands = get_brands(source_id, unaccented_name)
     brand = brands and brands[0]['value'] or None
     brand_node_id = brands and brands[0]['node_id'] or None
     return brand, brand_node_id
 
 
-def get_brands(unaccented_name: str) -> list:
+def get_brands(source_id: int, unaccented_name: str) -> list:
     # processed = cleanup_string(name, check_synonyms=False)
 
     # Test with fixed codes here. If works, then add new column to domain attributes and use that to filter attributes
@@ -49,6 +49,7 @@ def get_brands(unaccented_name: str) -> list:
     # attr_codes = get_process_product_attributes()
 
     attributes = attribute_lookup(
+        source_id=source_id,
         sentence=unaccented_name,
         brand_treatment='include',
         attribute_code='brand')
@@ -135,6 +136,7 @@ def get_domain_taxonomy_node_id_from_dict(attribute_code,
     # node_id = 12345;
     # return node_id;
     attr_result = attribute_lookup(
+        source_id=source_id,
         sentence=attribute_value,
         brand_treatment='include',
         attribute_code=attribute_code)
@@ -263,7 +265,7 @@ class Product(NamedTuple):
             brand_node_id = None
             brand = product.get('brand')
             if not brand:
-                brand, brand_node_id = get_brand(product['name'])
+                brand, brand_node_id = get_brand(source_id, product['name'])
             _product = {
                 'source_id': source_id,
                 'name': product['name'],
@@ -332,7 +334,7 @@ class DomainDictionaryCache:
     def _get_key(*args):
         return "|".join([str(a) for a in args])
 
-    def get_or_set(self, category_id, attribute_code, attribute_value):
+    def get_or_set(self, source_id, category_id, attribute_code, attribute_value):
         key = self._get_key(category_id, attribute_code, attribute_value)
         if key not in self.cache:
             # _value = db.session.query(
@@ -342,6 +344,7 @@ class DomainDictionaryCache:
             #    text_vector=func.to_tsvector('english', value)
             # ).first()
             _value = get_domain_taxonomy_node_id_from_dict(
+                source_id=source_id,
                 attribute_code=attribute_code,
                 attribute_value=attribute_value
             )

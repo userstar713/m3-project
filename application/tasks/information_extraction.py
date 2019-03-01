@@ -388,7 +388,7 @@ class PipelineExtractor:
                                                      product_id,
                                                      domain_attributes)
 
-        attrs = domain_attribute_lookup(sentence)['attributes']
+        attrs = domain_attribute_lookup(sentence, self.source_id)['attributes']
         tmp_attributes += attrs
         tmp_attributes = remove_duplicates(tmp_attributes)
         # We only care about the domain_attributes that were sent in... ignore other "bycatch" attributes that were extracted
