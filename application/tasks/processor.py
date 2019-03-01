@@ -116,7 +116,7 @@ def replace_with_nlp_ngrams(cleaned_string):
     # return cleaned_string
 
 
-def get_domain_taxonomy_node_id_from_dict(attribute_code,
+def get_domain_taxonomy_node_id_from_dict(source_id, attribute_code,
                                           attribute_value):
     """
     This function should return a single integer
@@ -344,9 +344,9 @@ class DomainDictionaryCache:
             #    text_vector=func.to_tsvector('english', value)
             # ).first()
             _value = get_domain_taxonomy_node_id_from_dict(
-                source_id=source_id,
-                attribute_code=attribute_code,
-                attribute_value=attribute_value
+                source_id,
+                attribute_code,
+                attribute_value
             )
             self.cache[key] = _value
             return _value
@@ -446,6 +446,7 @@ class ProductProcessor:
             node_id = None
             if datatype == 'node_id' and prop:
                 node_id = get_domain_taxonomy_node_id_from_dict(
+                    self.source_id,
                     da_code,
                     remove_diacritics(prop))
                 val = node_id
