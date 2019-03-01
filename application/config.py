@@ -40,8 +40,3 @@ CELERY_RESULT_BACKEND = getenv('CELERY_RESULT_BACKEND', REDIS_URI)
 CELERY_EAGER = getenv('CELERY_EAGER', 0)
 SCRAPER_PAGES_LIMIT = int(getenv('SCRAPER_PAGES_LIMIT', 0))
 PROXY_URL = 'http://lum-customer-hl_2a4458fe-zone-static-country-us:zidoxuxldfjn@zproxy.lum-superproxy.io:22225'
-
-# WORD MATCHING FACTORS
-LOOKUP_MIN_FUZZY_WORD_LENGTH = 4  # word has to be n chars for us to fix
-LOOKUP_FUZZY_PENALTY = 0.05
-LOOKUP_HIGHER_IDF_CUTOFF = 8.0  # replace this hard-coded version with calc'd

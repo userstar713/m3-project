@@ -4,6 +4,7 @@ from flask import current_app
 from application.caching import cache
 import re
 from funcy import log_durations
+from application.logging import logger
 
 
 def validate_pipeline_run(sequence_id: int, source_id: int):
@@ -98,6 +99,9 @@ def attribute_lookup(sentence,
         atts = row[0].get('attributes')
         if atts:
             attributes.extend(atts)
+    if not attributes:
+        from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+        attributes =dictionary_lookup.lookup(1, sentence, attr_codes=[attribute_code])[0]
     return attributes
 
 
