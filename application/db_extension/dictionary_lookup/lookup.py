@@ -1,23 +1,14 @@
 from datetime import datetime
-from typing import Optional
 
-from scipy.spatial import distance
 
 from application.db_extension.dictionary_lookup import config
 from application.logging import logger
 
 from application.db_extension.dictionary_lookup.postgres_functions import (
-    get_units_and_category_names,
     lookup_master_products)
 from application.db_extension.dictionary_lookup.utils import (
     remove_stopwords,
     get_starting_chr_bigrams,
-)
-from application.db_extension.dictionary_lookup.process_dictionary import \
-    get_avg_total_vector
-from application.db_extension.dictionary_lookup.spacy_wrapper import (
-    get_lemmas,
-    nlp,
 )
 from application.db_extension.dictionary_lookup.fuzzywuzzy import fuzz
 
@@ -317,7 +308,7 @@ class DictionaryLookupClass:
         return {'id': entity_id,
                 'text': entity_obj['original_text_value'],
                 'matched_words': matched_words,
-                'is_require_all_words': entity_obj['is_require_all_words'],
+                'is_require_all_words': entity_obj.get('is_require_all_words'),
                 'unmatched_words': unmatched_words,
                 'word_count': entity_obj['word_count'],
                 'entity_id': entity_obj['entity_id']}
@@ -367,8 +358,8 @@ class DictionaryLookupClass:
                     {'id': ent,
                      'text': entity_obj['original_text_value'],
                      'matched_words': matched_words,
-                     'is_require_all_words': entity_obj[
-                         'is_require_all_words'],
+                     'is_require_all_words': entity_obj.get(
+                         'is_require_all_words'),
                      'unmatched_words': unmatched_words,
                      'word_count': entity_obj['word_count'],
                      'entity_id': entity_obj['entity_id']}
@@ -433,7 +424,7 @@ class DictionaryLookupClass:
 
             # If has requires all words flag, then make sure there
             # are no unmatched words
-            if cand['is_require_all_words'] and unmatched_word_count > 0:
+            if cand.get('is_require_all_words') and unmatched_word_count > 0:
                 cand['final_score'] = -1
                 cand['brand_did_not_have_all_required_words'] = True
                 continue
@@ -599,7 +590,7 @@ class DictionaryLookupClass:
 
         # Get the category name(s) - e.g., wine, wines. Because we see this word often in input sentences,
         #  we want to restrict matching when it occurs so we don't match "white wine sauce" to "white wine"
-        cats = get_units_and_category_names(category_id).categories
+        cats = ['wine', 'wines']
 
         # modified_query = cleanup_string(query)
         words_in_query = query.split()
@@ -734,7 +725,7 @@ class DictionaryLookupClass:
         words_in_query = query.split()
         if is_allow_fuzzy:
             self.word_lemma_dictionary_for_query = dict(
-                zip(words_in_query, get_lemmas(words_in_query)))
+                zip(words_in_query, words_in_query))
         else:
             self.word_lemma_dictionary_for_query = dict(
                 zip(words_in_query, words_in_query))
@@ -847,11 +838,21 @@ class DictionaryLookupClass:
                         matched_entities[1], matched_entities[0]
         return matched_entities
 
-    def lookup(self, s, is_single_brand, is_disallow_brand, is_allow_fuzzy,
-               category_id, source_id, ordered_codes, all_match_words,
-               source_brand_list, attr_codes, orig_sentence,
-               check_for_products, is_human):
-
+    def lookup(self, source_id, s, is_single_brand=True, is_disallow_brand=False,
+               is_allow_fuzzy=False, ordered_codes=None, all_match_words=None,
+               source_brand_list=None, attr_codes=None, check_for_products=False,
+               is_human=False):
+        from application.db_extension.routines import get_default_category_id
+        orig_sentence = s
+        category_id = get_default_category_id()
+        if ordered_codes is None:
+            ordered_codes = []
+        if all_match_words is None:
+            all_match_words = []
+        if source_brand_list is None:
+            source_brand_list = []
+        if attr_codes is None:
+            attr_codes = []
         if not self._updated:
             logger.debug("Updating lookup dictionaries")
             self.update()
@@ -884,28 +885,6 @@ class DictionaryLookupClass:
         self.word_lemma_dictionary_for_query = {}
         #logger.info(f'Lookup results for {s}: {return_attrs}')
         return return_attrs, product_ids, return_extra_words
-
-    @property
-    def node_vectors(self) -> list:
-        """
-        get list of (id, vector) for all entities in dictionary
-        """
-        return [(k, v['word_vector']) for k, v in self.entities_dict.items() if
-                v['word_vector']]
-
-    @staticmethod
-    def get_phrase_vector(phrase: str) -> Optional[list]:
-        """
-        get vector for word
-        """
-        return get_avg_total_vector(nlp(phrase))
-
-    @staticmethod
-    def cosine(u: list, v: list) -> float:
-        """
-        get cosine distance between two vectors
-        """
-        return distance.cosine(u, v)
 
 
 dictionary_lookup = DictionaryLookupClass()

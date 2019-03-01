@@ -92,7 +92,7 @@ UnitsAndCategoryNames = namedtuple('UnitsAndCategoryNames',
 
 @cache.memoize()
 def get_units_and_category_names(category_id=DEFAULT_CATEGORY_ID):
-    q = '''SELECT unit_quantities, 
+    q = '''SELECT NULL, 
                    name_singular, 
                    name_plural,
                    trigger_words, 
@@ -105,8 +105,8 @@ def get_units_and_category_names(category_id=DEFAULT_CATEGORY_ID):
     rows = fetchall(q, (category_id,))
     row = rows[0]
     units = []
-    for i in range(len(row[0])):
-        units.append(row[0][i]['singular'])
+    # for i in range(len(row[0])):
+    #     units.append(row[0][i]['singular'])
     categories = row[1:3]
     trigger_words = set(row[3])
     trigger_response = row[4]
@@ -281,18 +281,11 @@ def get_dict_items_from_sql(category_id=DEFAULT_CATEGORY_ID):
            dd.attribute_id,
            dd.entity_id entity_id,
            dd.text_value,
-           dtn.derived_expression,
-           dtn.derived_definition,
-           dtn.derived_guides,
-           dtn.is_require_all_words,
            dd.source_entity_content->>'base' base_value,
-           dd.word_vector->'phrase_vector' word_vector,
-           da.code attribute_code,
-           dd.text_value_processed,
-           dd.ancestor_node_length
+           da.code attribute_code
         FROM domain_dictionary dd, domain_taxonomy_nodes dtn, domain_attributes da
         WHERE dd.entity_id = dtn.id
-        AND dd.entity_type = 'node'
+        -- AND dd.entity_type = 'node'
         AND dtn.attribute_id = da.id
         AND da.category_id=%s
     """
@@ -331,95 +324,6 @@ def update_entity_vector(vectors):
         )
     # commit changes
     db.session.commit()
-
-
-'''
-def domain_attribute_lookup_old(input_str, index=0, category_id=DEFAULT_CATEGORY_ID, brand=None,
-           constrain=True, predicate=None):
-    # Remove < > which cause problems
-    input_str = input_str.replace('<', '').replace('>', '')
-    predicate_str = predicate
-    brand_treatment = 'include'
-    should_extract_values = None
-    should_constrain = constrain
-    q = "SELECT * from public.attribute_lookup2 (%s, %s, %s, %s, %s, %s);"
-
-    if not brand:
-        brand_treatment = 'include'
-
-    elif brand == 'exclude':
-        brand_treatment = 'exclude'
-
-    elif brand == 'only':
-        brand_treatment = 'only'
-        should_constrain = False
-
-    # print("Attribute search: {}".format(input_str))
-    rows = fetchall(q, (
-        category_id, filter_tsquery(input_str), predicate_str, brand_treatment, should_extract_values,
-        should_constrain))
-    result = rows[0]
-    final_result = []
-    for rs in result:
-        frs = {
-            'conjunction': rs['conjunction'],
-            'predicate_attribute_code': rs['predicate_attribute_code'],
-            'remaining_words': rs['remaining_words']
-        }
-
-        if rs['attributes']:
-            frs['attributes'] = []
-            for atb in rs['attributes']:
-
-                # Because postgres call can return two different attributes with same value, we want to
-                # only allow one of these. So disallow 2nd+
-                found_attrs = \
-                    list(filter(lambda a: (a.get('value', None) == atb['value'] and a.get('code', None) != atb['code']),
-                                frs['attributes']))
-                if not found_attrs:
-                    obj = {
-                        'code': atb['code'],
-                        'value': atb['value'],
-                        'original': atb.get('original', atb['value']),
-                        'start': atb['start'] + index,
-                        'end': atb['end'] + index,
-                    }
-
-                    # To deal with nlp limitations in the explainer,
-                    # for the original (alias) values, we only want to show them if they have the same POS as the
-                    # base value. e.g., POS(salmon) == POS(fish). However, POS(fine tannin) != POS(smooth), so in
-                    # the latter case, let's just use the base value instead of original.
-                    # We'll only look at the last word for now (revert is POS not the same)
-                    # Also, just look at the first two chars in POS (e.g., so VBN == VBD)
-
-                    all_attributes, _ = get_attributes(category_id)
-                    attr = list(filter(lambda a: a.get('code', None) == atb['code'], all_attributes))[0]
-                    # if get_pos_for_word(obj['value'].split()[-1])[:2] != get_pos_for_word(obj['original'].split()[-1])[:2]:
-                    if attr.get('pos', None)[:2] != get_pos_for_word(obj['original'].split()[-1])[:2]:
-                        obj['original'] = obj['value']
-
-                    # Add the node expression text if it's there
-                    derived_definition = atb.get('derived_definition', None)
-
-                    # Substitute {value} with alias if it exists
-                    if derived_definition:
-                        pos = derived_definition.find('{value}')
-                        if pos > -1:
-                            word = obj['original'].capitalize() if pos == 0 else obj['original']
-                            obj['derived_definition'] = derived_definition.replace('{value}', word)
-                        else:
-                            obj['derived_definition'] = derived_definition
-
-                    frs['attributes'].append(obj)
-
-            frs['attributes'] = sorted(frs['attributes'], key=lambda attribute: attribute['start'])
-        else:
-            frs['attributes'] = None
-
-        final_result.append(frs)
-
-    return final_result
-'''
 
 
 @cache.memoize()

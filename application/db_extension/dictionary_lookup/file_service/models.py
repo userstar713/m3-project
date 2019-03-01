@@ -1,13 +1,13 @@
-import joblib
-import funcy
+import os
 import pickle
 from datetime import datetime
-import os
-from application.core.logging import logger
-from pathlib import Path
-from application.extensions import cache
-from flask import current_app
 from io import BytesIO
+from pathlib import Path
+import joblib
+from flask import current_app
+from application.logging import logger
+from application.caching import cache
+
 
 class BaseDataFile(object):
     def __init__(self, filename, preload=False, default_class=dict):
@@ -72,7 +72,8 @@ class BaseDataFile(object):
         try:
             self._data = self._load_function()
         except ValueError:
-            logger.warning(f'Data not found for {self.key} perfoming dicitonary update')
+            logger.warning(
+                f'Data not found for {self.key} perfoming dicitonary update')
             from application.dictionary_lookup import \
                 update_dictionary_lookup_data
             update_dictionary_lookup_data(log_function=logger.info)
@@ -113,7 +114,8 @@ class PickleDataFile(BaseDataFile):
                 try:
                     result = pickle.load(f)
                 except EOFError as e:
-                    logger.error("{} while loading: {}".format(e.__class__.__name__, self._filename))
+                    logger.error("{} while loading: {}".format(
+                        e.__class__.__name__, self._filename))
         else:
             logger.error("File not found {}".format(self._filename))
         if result:
@@ -148,7 +150,7 @@ class CacheDataFile(BaseDataFile):
         with current_app.app_context():
             cache.set(self.timestamp_key,
                       str(datetime.now()),
-                      timeout=60*60*24*7)
+                      timeout=60 * 60 * 24 * 7)
 
     @property
     def key(self):
@@ -165,7 +167,8 @@ class CacheDataFile(BaseDataFile):
             if _raw:
                 result = pickle.loads(_raw)
             else:
-                raise ValueError(f"Load data from redis: {self.key} - NOT FOUND")
+                raise ValueError(
+                    f"Load data from redis: {self.key} - NOT FOUND")
             if result:
                 return result
             else:
@@ -173,10 +176,11 @@ class CacheDataFile(BaseDataFile):
 
     def dump(self, data):
         with current_app.app_context():
-            cache.set(self.key, pickle.dumps(data), timeout=60*60*24*7)
+            cache.set(self.key, pickle.dumps(data), timeout=60 * 60 * 24 * 7)
             self._data = data
             self._loaded = True
             self._set_timestamp()
+
 
 class PickleCacheDataFile(CacheDataFile):
     pass
@@ -205,7 +209,7 @@ class JoblibCacheDataFile(CacheDataFile):
         with current_app.app_context():
             f = BytesIO()
             pickled = joblib.dump(data, f)
-            cache.set(self.key, pickled, timeout=60*60*24*7)
+            cache.set(self.key, pickled, timeout=60 * 60 * 24 * 7)
             self._data = data
             self._loaded = True
             self._set_timestamp()

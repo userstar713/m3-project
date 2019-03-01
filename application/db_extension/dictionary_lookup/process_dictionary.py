@@ -7,14 +7,11 @@ from application.db_extension.dictionary_lookup import config
 from application.logging import logger
 
 from application.db_extension.dictionary_lookup.postgres_functions import (
-    get_dict_items_from_sql,
-    fetch_entities_without_vectors,
-    update_entity_vector)
-from application.db_extension.dictionary_lookup.utils import get_starting_chr_bigrams
+    get_dict_items_from_sql)
+from application.db_extension.dictionary_lookup.utils import (
+    get_starting_chr_bigrams)
 
-from application.db_extension.dictionary_lookup.spacy_wrapper import nlp_list
 
-# TOKEN_PATTERN = r'(?u)\b\w+\b'
 TOKEN_PATTERN = r'(?u)\b[\w\.]+\b'
 
 
@@ -30,7 +27,7 @@ def convert_to_dict_lookup(data,
         orig_str = row['text_value']
         row['original_text_value'] = orig_str
         # Use the value from postgres if it's there (should always be there)
-        cleaned_string = row['text_value_processed'] if row['text_value_processed'] else cleanup_string(
+        cleaned_string = row['text_value_processed'] if row.get('text_value_processed') else cleanup_string(
             row['text_value'])
         row['text_value'], _ = remove_stopwords(cleaned_string)
         if row['text_value'] == '':
@@ -54,15 +51,16 @@ def convert_to_dict_lookup(data,
                   'attribute_id',
                   'entity_id',
                   'text_value',
-                  'derived_expression',
-                  'derived_definition',
-                  'derived_guides',
-                  'is_require_all_words',
+                  # 'derived_expression',
+                  # 'derived_definition',
+                  # 'derived_guides',
+                  # 'is_require_all_words',
                   'base_value',
-                  'word_vector',
+                  # 'word_vector',
                   'attribute_code',
-                  'text_value_processed',
-                  'ancestor_node_length')
+                  # 'text_value_processed',
+                  # 'ancestor_node_length'
+                  )
     result = []
     # remove already existing rows from the list:
     rows = [row for row in data if row.id not in existing_entries]
@@ -75,12 +73,13 @@ def convert_to_dict_lookup(data,
 
 
 def process_dictionary(entities, log_function=logger.info):
-    from application.core.file_service import (lookup_entities,
-                                               lookup_inverted_index,
-                                               lookup_word_idf,
-                                               lookup_ordered_entities,
-                                               lookup_entities_text_id_dict,
-                                               lookup_idf_statistics)
+    from application.db_extension.dictionary_lookup.file_service import (
+        lookup_entities,
+        lookup_inverted_index,
+        lookup_word_idf,
+        lookup_ordered_entities,
+        lookup_entities_text_id_dict,
+        lookup_idf_statistics)
     entities_text = [entity['text_value'] for entity in entities]
     vectorizer = TfidfVectorizer(ngram_range=(1, 1), norm=None, use_idf=True,
                                  sublinear_tf=True, token_pattern=TOKEN_PATTERN)
@@ -160,7 +159,7 @@ def process_dictionary(entities, log_function=logger.info):
 
 # INVERTED INDEX FUNCTION
 def create_ngrams(entities, existing_index):
-    from application.core.file_service import lookup_inverted_index
+    from application.db_extension.dictionary_lookup.file_service import lookup_inverted_index
     inverted_index = existing_index
     for row in entities:
         chr_ngrams = get_starting_chr_bigrams(row['words'])
@@ -183,62 +182,25 @@ def get_avg_total_vector(tokens: list) -> list:
     return avg_total_vector / num if num else None
 
 
-def get_phrase_vectors(phrases: list) -> [list, None]:
-    """
-    generate phrase: vector dictionary
-    :param phrases:
-    :return:
-    """
-    return {k: get_avg_total_vector(v) for k, v in zip(phrases, nlp_list(phrases))}
-
-
-def insert_word_vectors(log_function=logger.info):
-    rows = fetch_entities_without_vectors()
-    if rows:
-        vectors = get_phrase_vectors([row['text_value'] for row in rows])
-        result = {}
-        for i, row in enumerate(rows):
-            if (i % 500) == 0:
-                log_function(f'{i} word have been processed')
-            vector = vectors[row['text_value']]
-            if vector is None:
-                continue
-            else:
-                d = {'phrase_vector': vector.tolist()}
-                # encoded_vector = str(d).replace('\'', '"')  # TODO refactor that
-                result[row['id']] = d
-        log_function('trying to perform bulk_update')
-        try:
-            update_entity_vector(result)
-        except BaseException:
-            logger.error("Error bulk updating vectors")
-
-        log_function(f'{i-1} words have been processed')
-
-
 def update_dictionary_lookup_data(log_function=logger.info):
-    from application.extensions import db
-    from application.core.file_service import lookup_entities
-    with db.app.app_context():
-        log_function('starting dictionary lookup data update')
-        start_time = datetime.now()
-        log_function('creating word vectors')
-        insert_word_vectors(log_function=log_function)
-        log_function('getting existing index')
-        existing_entries = set()
-        existing_index = {}
-        log_function('getting entities')
-        data = get_dict_items_from_sql()
-        entities = [e for e in
-                    convert_to_dict_lookup(data,
-                                           existing_entries=existing_entries,
-                                           log_function=log_function)
-                    if e['text_value']
-                    ]
-        lookup_entities.dump(entities)
-        log_function('creating ngram index')
-        create_ngrams(entities, existing_index)
-        log_function('processing dictionary')
-        process_dictionary(entities, log_function=log_function)
-        log_function('finished dictionary update in {}'.format(
-            datetime.now() - start_time))
+    from application.db_extension.dictionary_lookup.file_service import lookup_entities
+    log_function('starting dictionary lookup data update')
+    start_time = datetime.now()
+    log_function('getting existing index')
+    existing_entries = set()
+    existing_index = {}
+    log_function('getting entities')
+    data = get_dict_items_from_sql()
+    entities = [e for e in
+                convert_to_dict_lookup(data,
+                                       existing_entries=existing_entries,
+                                       log_function=log_function)
+                if e['text_value']
+                ]
+    lookup_entities.dump(entities)
+    log_function('creating ngram index')
+    create_ngrams(entities, existing_index)
+    log_function('processing dictionary')
+    process_dictionary(entities, log_function=log_function)
+    log_function('finished dictionary update in {}'.format(
+        datetime.now() - start_time))

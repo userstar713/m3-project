@@ -168,7 +168,7 @@ def add_space_before_period_and_number(text):
     return text
 
 
-def cleanup_string(input_str, check_synonyms=True):
+def cleanup_string(input_str, check_synonyms=False):
     # Make sure it's a string and convert if not
     input_str = str(input_str)
 

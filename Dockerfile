@@ -1,6 +1,6 @@
 FROM python:3.6-alpine
 ENV BUILD_REQUIREMENTS "git gcc musl-dev libxml2-dev libxslt-dev libffi-dev"
-ENV REQUIREMENTS "bash make libxml2 libxslt postgresql-dev postgresql-client linux-headers"
+ENV REQUIREMENTS "bash make libxml2 libxslt postgresql-dev postgresql-client linux-headers  g++ gfortran lapack-dev"
 ENV SCRAPER_PAGES_LIMIT "0"
 
 RUN mkdir -p /srv
@@ -12,7 +12,7 @@ COPY Pipfile.lock .
 RUN apk update --no-cache \
     && apk add --no-cache $BUILD_REQUIREMENTS $REQUIREMENTS \
     && pip3 install pipenv==2018.10.13  \
-    && pipenv install --system --deploy \
+    && pipenv install --verbose --system --deploy \
     && apk del $BUILD_REQUIREMENTS
 
 COPY . .
