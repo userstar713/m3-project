@@ -19,6 +19,10 @@ celery-redbeat = "*"
 sqlalchemy = "*"
 scrapy-proxies = "*"
 flower = "*"
+joblib = "==0.11"
+numpy = "*"
+scipy = "*"
+scikit-learn = "*"
 
 [dev-packages]
 

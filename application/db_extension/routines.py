@@ -4,6 +4,7 @@ from flask import current_app
 from application.caching import cache
 import re
 from funcy import log_durations
+from application.logging import logger
 
 
 def validate_pipeline_run(sequence_id: int, source_id: int):
@@ -31,6 +32,7 @@ def filter_tsquery(s):
 
 @cache.memoize(timeout=60 * 60 * 24 * 7)
 def attribute_lookup(sentence,
+                     source_id=1,
                      brand_treatment='exclude',
                      attribute_code=False):
     """
@@ -98,11 +100,14 @@ def attribute_lookup(sentence,
         atts = row[0].get('attributes')
         if atts:
             attributes.extend(atts)
+    if not attributes:
+        from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+        attributes =dictionary_lookup.lookup(source_id, sentence, attr_codes=[attribute_code])[0]
     return attributes
 
 
-def domain_attribute_lookup(sentence):
-    result = attribute_lookup(sentence)
+def domain_attribute_lookup(sentence, source_id):
+    result = attribute_lookup(sentence, source_id=source_id)
     return {'attributes': result, 'extra_words': []}
 
 
