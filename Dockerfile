@@ -11,7 +11,7 @@ COPY Pipfile.lock .
 
 RUN apk update --no-cache \
     && apk add --no-cache $BUILD_REQUIREMENTS $REQUIREMENTS \
-    && pip3 install pipenv==2018.10.13  \
+    && pip3 install pipenv==2018.11.26  \
     && pipenv install --system --deploy \
     && apk del $BUILD_REQUIREMENTS
 
