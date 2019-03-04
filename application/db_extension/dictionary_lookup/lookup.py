@@ -842,7 +842,7 @@ class DictionaryLookupClass:
                is_allow_fuzzy=False, ordered_codes=None, all_match_words=None,
                source_brand_list=None, attr_codes=None, check_for_products=False,
                is_human=False):
-        attr_codes = [x for x in attr_codes if x]
+        attr_codes = [x for x in attr_codes if attr_codes and x]
         from application.db_extension.routines import get_default_category_id
         orig_sentence = s
         category_id = get_default_category_id()

@@ -5,6 +5,7 @@ if __name__ == '__main__':
         from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
         from application.db_extension.dictionary_lookup import process_dictionary
         process_dictionary.update_dictionary_lookup_data()
-        dictionary_lookup.lookup(query, False, False, True, 1, 31, [], [], [], [], "Silver Oak Napa Valley Cabernet Sauvignon 2014", True, True)
+        query = "Warre's Vintage Port (375ML half-bottle) 2016"
+        dictionary_lookup.lookup(31, query)
         import pdb
         pdb.set_trace()
