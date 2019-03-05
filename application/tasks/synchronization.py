@@ -107,8 +107,8 @@ def get_products_task(_, products: List[dict], source_id: int,
     if not products:
         logger.info('No products scraped for the source_id=%s', source_id)
     else:
-        from application.db_extension.dictionary_lookup import process_dictionary
-        process_dictionary.update_dictionary_lookup_data()
+        from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+        dictionary_lookup.update_dictionary_lookup_data()
     return prepare_products(source_id, products, full=full)
 
 

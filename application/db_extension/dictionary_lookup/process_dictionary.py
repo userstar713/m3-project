@@ -73,17 +73,10 @@ def convert_to_dict_lookup(data,
 
 
 def process_dictionary(entities, log_function=logger.info):
-    from application.db_extension.dictionary_lookup.file_service import (
-        lookup_entities,
-        lookup_inverted_index,
-        lookup_word_idf,
-        lookup_ordered_entities,
-        lookup_entities_text_id_dict,
-        lookup_idf_statistics)
     entities_text = [entity['text_value'] for entity in entities]
     vectorizer = TfidfVectorizer(ngram_range=(1, 1), norm=None, use_idf=True,
                                  sublinear_tf=True, token_pattern=TOKEN_PATTERN)
-    _ = vectorizer.fit_transform(entities_text)
+    vectorizer.fit_transform(entities_text)
     idf = vectorizer.idf_
     idf_dict = dict(zip(vectorizer.get_feature_names(), idf))
 
@@ -149,17 +142,12 @@ def process_dictionary(entities, log_function=logger.info):
 
     # Save dictionaries
     log_function('saving dictionaries')
-    lookup_word_idf.dump(idf_dict)
-    lookup_ordered_entities.dump(ordered_entities_dict)
-    lookup_entities_text_id_dict.dump(entities_text_id_dict)
-    lookup_idf_statistics.dump(cutoff_idf)
 
-    return
+    return idf_dict, ordered_entities_dict, entities_text_id_dict, cutoff_idf
 
 
 # INVERTED INDEX FUNCTION
 def create_ngrams(entities, existing_index):
-    from application.db_extension.dictionary_lookup.file_service import lookup_inverted_index
     inverted_index = existing_index
     for row in entities:
         chr_ngrams = get_starting_chr_bigrams(row['words'])
@@ -167,7 +155,6 @@ def create_ngrams(entities, existing_index):
             if chr_grm not in inverted_index:
                 inverted_index[chr_grm] = []
             inverted_index[chr_grm].append(row['id'])
-    lookup_inverted_index.dump(inverted_index)
     return inverted_index
 
 
@@ -180,27 +167,3 @@ def get_avg_total_vector(tokens: list) -> list:
             avg_total_vector += token['vector']
             num += 1
     return avg_total_vector / num if num else None
-
-
-def update_dictionary_lookup_data(log_function=logger.info):
-    from application.db_extension.dictionary_lookup.file_service import lookup_entities
-    log_function('starting dictionary lookup data update')
-    start_time = datetime.now()
-    log_function('getting existing index')
-    existing_entries = set()
-    existing_index = {}
-    log_function('getting entities')
-    data = get_dict_items_from_sql()
-    entities = [e for e in
-                convert_to_dict_lookup(data,
-                                       existing_entries=existing_entries,
-                                       log_function=log_function)
-                if e['text_value']
-                ]
-    lookup_entities.dump(entities)
-    log_function('creating ngram index')
-    create_ngrams(entities, existing_index)
-    log_function('processing dictionary')
-    process_dictionary(entities, log_function=log_function)
-    log_function('finished dictionary update in {}'.format(
-        datetime.now() - start_time))

@@ -469,18 +469,6 @@ def get_transformed_vector(text, vectorizer):
 #        pred = 'unknown'
 #    return pred, max(pred_prob)
 
-def classify_universal_intent(search_str, original_str):
-    # Search classifier twice and based on score return best one
-    from application.core.file_service import clf_universal_attribute
-    pred_attr = clf_universal_attribute.predict([search_str])[0]
-    pred_non_attr = clf_universal_attribute.predict([original_str])[0]
-    pred_attr_prob = max(
-        clf_universal_attribute.predict_proba([search_str])).max()
-    pred_non_attr_prob = max(
-        clf_universal_attribute.predict_proba([original_str])).max()
-
-    return pred_attr, pred_non_attr, pred_attr_prob, pred_non_attr_prob
-
 
 def cprint(json_object):
     """

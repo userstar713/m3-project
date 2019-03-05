@@ -117,18 +117,6 @@ CONTEXT_CLF_MODEL_PATH = BASE_CONTEXT_MODEL_PATH / 'context_classifier.pkl'
 CONTEXT_CV_MODEL_PATH = BASE_CONTEXT_MODEL_PATH / 'context_count_vectorizer.pkl'
 CONTEXT_DV_MODEL_PATH = BASE_CONTEXT_MODEL_PATH / 'context_dict_vectorizer.pkl'
 
-#
-# Dictionary lookup settings
-#
-
-LOOKUP_INPUT_DICT_FILENAME = RESOURCES_PATH / 'domain_dictionary_small.csv'
-LOOKUP_INVERTED_INDEX_FILENAME = RESOURCES_PATH / 'inverted_index.pkl'
-LOOKUP_WORD_IDF_DICT_FILENAME = RESOURCES_PATH / 'word_idf_dict.pkl'
-LOOKUP_ORDERED_ENTITIES_DICT_FILENAME = RESOURCES_PATH / 'ordered_entities_dict.pkl'
-LOOKUP_ENTITIES_TEXT_ID_DICT_FILENAME = RESOURCES_PATH / 'entities_text_id_dict.pkl'
-LOOKUP_IDF_STATISTICS_FILENAME = RESOURCES_PATH / 'idf_stats.pkl'
-LOOKUP_ENTITIES_FILENAME = RESOURCES_PATH / 'entities.pkl'
-
 # WORD MATCHING FACTORS
 LOOKUP_MIN_FUZZY_WORD_LENGTH = 4  # word has to be n chars for us to fix
 LOOKUP_FUZZY_THRESHOLD = 80  # higher numbers are safer

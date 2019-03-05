@@ -6,17 +6,32 @@ from application.logging import logger
 
 from application.db_extension.dictionary_lookup.postgres_functions import (
     lookup_master_products)
+from application.db_extension.dictionary_lookup.process_dictionary import (
+    get_dict_items_from_sql,
+    convert_to_dict_lookup,
+    create_ngrams,
+    process_dictionary)
 from application.db_extension.dictionary_lookup.utils import (
     remove_stopwords,
     get_starting_chr_bigrams,
 )
-from application.db_extension.dictionary_lookup.fuzzywuzzy import fuzz
+from fuzzywuzzy import fuzz
 
 MIN_SCORE = 0  # minimum score to accept entity
 UNMATCHABLE = '*********'  # unmatchable token
 
 
-class DictionaryLookupClass:
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(
+                Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class DictionaryLookupClass(metaclass=Singleton):
     """
     Implements dictionary lookup logic
 
@@ -37,27 +52,6 @@ class DictionaryLookupClass:
         self._files = []
         self.word_lemma_dictionary_for_query = {}
 
-    def _load_data(self):
-        from application.db_extension.dictionary_lookup.file_service import (
-            lookup_word_idf,
-            lookup_inverted_index,
-            lookup_entities_text_id_dict,
-            lookup_ordered_entities)
-        self.word_idf_dict = lookup_word_idf
-
-        self.ngram_inverted_index = lookup_inverted_index
-        logger.info("Loading entities text to id dict...")
-        self.entities_text_id_dict = lookup_entities_text_id_dict
-        logger.info("Loading entities dict...")
-        self.entities_dict = lookup_ordered_entities
-        #
-        self.word_idf_dict._load()
-        self.ngram_inverted_index._load()
-        self.entities_text_id_dict._load()
-        self.entities_dict._load()
-        self._files = [self.word_idf_dict, self.ngram_inverted_index,
-                       self.entities_text_id_dict, self.entities_dict]
-
     def get_dict_entity_for_str(self, s):
         return self.entities_text_id_dict.get(s, None)
 
@@ -73,27 +67,6 @@ class DictionaryLookupClass:
                     return i
         # Code should always be found if code list is passed in, but if empty then just return the first id
         return found[0]
-
-    def timestamps_changed(self):
-        """ return False if not changed"""
-        return all([f.is_changed() for f in self._files])
-
-    def update_if_changed(self):
-        if self.timestamps_changed():
-            self.update()
-
-    def update(self):
-        start_time = datetime.now()
-        self._updated = False
-        try:
-            self._load_data()
-        except FileNotFoundError as e:
-            logger.warning('not complete data')
-            raise e
-        else:
-            logger.info("Dicts loaded in {} seconds".format(
-                datetime.now() - start_time))
-            self._updated = True
 
     @staticmethod
     def get_run_length(matched_words):
@@ -842,7 +815,6 @@ class DictionaryLookupClass:
                is_allow_fuzzy=False, ordered_codes=None, all_match_words=None,
                source_brand_list=None, attr_codes=None, check_for_products=False,
                is_human=False):
-        attr_codes = [x for x in attr_codes if attr_codes and x]
         from application.db_extension.routines import get_default_category_id
         orig_sentence = s
         category_id = get_default_category_id()
@@ -854,10 +826,7 @@ class DictionaryLookupClass:
             source_brand_list = []
         if attr_codes is None:
             attr_codes = []
-        if not self._updated:
-            logger.debug("Updating lookup dictionaries")
-            self.update()
-        self.update_if_changed()
+        attr_codes = [x for x in attr_codes if x]
         attr_codes = [] if not attr_codes else attr_codes
         product_ids = []
         # the input query will be cleaned, but still may include stopwords. we will send in the original query string
@@ -884,8 +853,32 @@ class DictionaryLookupClass:
         return_attrs = self.format_as_predicate_syntax(matched)
         return_extra_words = remaining_word_indexes.union(stopword_indexes)
         self.word_lemma_dictionary_for_query = {}
-        #logger.info(f'Lookup results for {s}: {return_attrs}')
         return return_attrs, product_ids, return_extra_words
+
+    def update_dictionary_lookup_data(self, log_function=logger.info):
+        log_function('starting dictionary lookup data update')
+        start_time = datetime.now()
+        log_function('getting existing index')
+        existing_entries = set()
+        existing_index = {}
+        log_function('getting entities')
+        data = get_dict_items_from_sql()
+        entities = [e for e in
+                    convert_to_dict_lookup(data,
+                                           existing_entries=existing_entries,
+                                           log_function=log_function)
+                    if e['text_value']
+                    ]
+        log_function('creating ngram index')
+        self.ngram_inverted_index = create_ngrams(entities, existing_index)
+        log_function('processing dictionary')
+        res = process_dictionary(entities, log_function=log_function)
+        (idf_dict, ordered_entities_dict, entities_text_id_dict, _) = res
+        self.word_idf_dict = idf_dict
+        self.entities_text_id_dict = entities_text_id_dict
+        self.entities_dict = ordered_entities_dict
+        log_function('finished dictionary update in {}'.format(
+            datetime.now() - start_time))
 
 
 dictionary_lookup = DictionaryLookupClass()

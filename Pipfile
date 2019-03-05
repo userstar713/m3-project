@@ -23,6 +23,8 @@ joblib = "==0.11"
 numpy = "*"
 scipy = "*"
 scikit-learn = "*"
+python-levenshtein = "==0.12.0"
+fuzzywuzzy = "*"
 
 [dev-packages]
 
