@@ -25,6 +25,7 @@ scipy = "*"
 scikit-learn = "*"
 python-levenshtein = "==0.12.0"
 fuzzywuzzy = "*"
+tornado = "==5.1.1"
 
 [dev-packages]
 
