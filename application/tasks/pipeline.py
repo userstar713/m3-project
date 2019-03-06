@@ -44,6 +44,9 @@ def execute_pipeline(source_id: int,
 
         If any of the above functions returns an error, then set pipeline_sequence.status="error" and return early.
     """
+    from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+    if not dictionary_lookup.entities_text_id_dict:
+        dictionary_lookup.update_dictionary_lookup_data()
     logger.info("execute_pipeline: starts, sequence_id=" + str(sequence_id))
     start = datetime.now()
 
