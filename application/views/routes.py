@@ -31,6 +31,7 @@ def sync(source_id: int) -> Response:
         full = bool((int(full)))
     except TypeError:
         full = False
+    update_lookup_data()
     status = start_synchronization(source_id, full=full)
     return jsonify(
         {'data': {
@@ -54,11 +55,15 @@ def scrape(source_id: int) -> Response:
         }
     )
 
+def update_lookup_data():
+    from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+    dictionary_lookup.update_dictionary_lookup_data()
 
 @seller_integration_bp.route(
     '/source/<int:source_id>/execute_pipeline',
 )
 def execute_pipeline(source_id: int) -> Response:
+    update_lookup_data()
     task = execute_pipeline_task.delay(([True], True), source_id)
     return jsonify(
         {'data': {'status': task.id}}
