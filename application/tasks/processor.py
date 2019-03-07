@@ -649,8 +649,9 @@ class ProductProcessor:
                                           datatype=datatype,
                                           value_key=DATATYPES[
                                               datatype])
-            if savs:
-                sav_list += savs
+            for sav in savs:
+                if sav not in sav_list:
+                    sav_list.append(sav)
 
         self.process_master_product()
         for sav in sav_list:
