@@ -33,7 +33,6 @@ def convert_to_dict_lookup(data,
         if row['text_value'] == '':
             logger.debug("Add to nlp_ngrams: ", orig_str)
             row['text_value'] = orig_str
-        # row['text_value'] = unidecode(row['text_value'])  # remove accents -> convert letters like å to a
         row['words'] = row['text_value'].split()
         row['word_count'] = len(row['words'])
         row['id'] = row['id']
@@ -51,25 +50,16 @@ def convert_to_dict_lookup(data,
                   'attribute_id',
                   'entity_id',
                   'text_value',
-                  # 'derived_expression',
-                  # 'derived_definition',
-                  # 'derived_guides',
-                  # 'is_require_all_words',
                   'base_value',
-                  # 'word_vector',
                   'attribute_code',
-                  # 'text_value_processed',
-                  # 'ancestor_node_length'
                   )
-    result = []
     # remove already existing rows from the list:
-    rows = [row for row in data if row.id not in existing_entries]
-    log_function('{} rows to convert'.format(len(rows)))
-    for i, row in enumerate(rows):
+    log_function('{} rows to convert'.format(len(data)))
+    for i, row in enumerate(data):
         if not i % 10000:
             log_function('{} rows converted'.format(i))
-        result.append(_convert(dict(zip(fieldnames, row))))
-    return result
+        data[i] = _convert(dict(zip(fieldnames, row)))
+    return data
 
 
 def process_dictionary(entities, log_function=logger.info):

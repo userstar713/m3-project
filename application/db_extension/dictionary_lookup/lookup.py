@@ -859,26 +859,20 @@ class DictionaryLookupClass(metaclass=Singleton):
         log_function('starting dictionary lookup data update')
         start_time = datetime.now()
         log_function('getting existing index')
-        existing_entries = set()
         existing_index = {}
         log_function('getting entities')
         data = get_dict_items_from_sql()
-        entities = [e for e in
-                    convert_to_dict_lookup(data,
-                                           existing_entries=existing_entries,
-                                           log_function=log_function)
-                    if e['text_value']
-                    ]
+        data = convert_to_dict_lookup(data, log_function=log_function)
         log_function('creating ngram index')
-        self.ngram_inverted_index = create_ngrams(entities, existing_index)
+        self.ngram_inverted_index = create_ngrams(data, existing_index)
         log_function('processing dictionary')
-        res = process_dictionary(entities, log_function=log_function)
+        res = process_dictionary(data, log_function=log_function)
         (idf_dict, ordered_entities_dict, entities_text_id_dict, _) = res
         self.word_idf_dict = idf_dict
         self.entities_text_id_dict = entities_text_id_dict
         self.entities_dict = ordered_entities_dict
-        log_function('finished dictionary update in {}'.format(
-            datetime.now() - start_time))
+        log_function('finished dictionary update in %s',
+                     datetime.now() - start_time)
 
 
 dictionary_lookup = DictionaryLookupClass()
