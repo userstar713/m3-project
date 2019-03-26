@@ -104,7 +104,7 @@ node {
     }
 }
 
-/*
+
 build job: 'deploy-service',
       parameters: [
         string(name: 'SERVICE_NAME', value: "${serviceName}"),
@@ -125,35 +125,6 @@ build job: 'deploy-service',
 
 build job: 'deploy-service',
       parameters: [
-        string(name: 'SERVICE_NAME', value: "${serviceName}-flower"),
-        string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
-      wait: false
-*/
-
-build job: 'deploy-service',
-      parameters: [
-        string(name: 'ENVIRONMENT', value: "prod_m3"),
-        string(name: 'SERVICE_NAME', value: "${serviceName}"),
-        string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
-      wait: false
-
-build job: 'deploy-service',
-      parameters: [
-        string(name: 'ENVIRONMENT', value: "prod_m3"),
-        string(name: 'SERVICE_NAME', value: "${serviceName}-beat"),
-        string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
-      wait: false
-
-build job: 'deploy-service',
-      parameters: [
-        string(name: 'ENVIRONMENT', value: "prod_m3"),
-        string(name: 'SERVICE_NAME', value: "${serviceName}-worker"),
-        string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
-      wait: false
-
-build job: 'deploy-service',
-      parameters: [
-        string(name: 'ENVIRONMENT', value: "prod_m3"),
         string(name: 'SERVICE_NAME', value: "${serviceName}-flower"),
         string(name: 'SERVICE_DOCKER_TAG', value: "${currentBuild.displayName}")],
       wait: false
