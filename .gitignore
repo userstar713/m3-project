@@ -8,3 +8,4 @@ celerybeat-schedule
 celerybeat.pid
 env
 .DS_Store
+
