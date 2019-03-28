@@ -1,0 +1,143 @@
+{
+  "3700168": [
+    {
+      "reviewer": "Wine Spectator",
+      "rating": 92.0,
+      "sentences": [
+        {
+          "text": "A touch earthy and leathery, giving it a sense of dryness, with leather-mineral-scented tannins, this is a dark, rich, high-extract, muscular style that needs time to reveal its depth and complexity, with chewy currant, herb, anise, mineral and earth flavors.",
+          "attributes": [
+            {
+              "code": "characteristics",
+              "value": "Earth",
+			  "original" : "earth"
+            },
+            {
+              "code": "characteristics",
+              "value": "Currant",
+			  "original":"currant"
+            },
+            {
+              "code": "characteristics",
+              "value": "Anise",
+			  "original" : "anise"
+            },
+            {
+              "code": "characteristics",
+              "value": "Mineral",
+			  "original": "mineral"
+            },
+            {
+              "code": "characteristics",
+              "value": "Leather",
+			  "original" : "leather-mineral-scented"
+            }
+          ]
+        },
+        {
+          "text": "Will benefit from short- to mid-term cellaring.",
+          "attributes": []
+        },
+        {
+          "text": "Cabernet Franc and Merlot.",
+          "attributes": []
+        }
+      ]
+    },
+    {
+      "reviewer": "Stephen Tanzer's International Wine Cellar",
+      "rating": 93.0,
+      "sentences": [
+        {
+          "text": "Full ruby.",
+          "attributes": []
+        },
+        {
+          "text": "Scented nose of blueberry, graphite, licorice and wild herbs, with a slight medicinal quality I associate with this vintage.",
+          "attributes": [
+            {
+              "code": "characteristics",
+              "value": "Graphite",
+			  "original":"graphite"
+            },
+            {
+              "code": "characteristics",
+              "value": "Licorice",
+			  "original":"licorice"
+            },
+            {
+              "code": "characteristics",
+              "value": "Blueberry",
+			  "original":"blueberry"
+            }
+          ]
+        },
+        {
+          "text": "Dense, sweet and fat, with superb depth of flavor and compelling sweetness.",
+          "attributes": []
+        },
+        {
+          "text": "Finishes with big, tongue-dusting tannins.",
+          "attributes": []
+        },
+        {
+          "text": "Less obvious today than the 2000 but this has terrific structure and potential.",
+          "attributes": [
+            {
+              "code": "tannin",
+              "value": "Medium tannins"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "reviewer": "Robert Parker's Wine Advocate",
+      "rating": 94.0,
+      "sentences": [
+        {
+          "text": "The 1999 Proprietary Red (a 500-case blend of 60% Cabernet Franc and 40% Merlot) offers a dense ruby/purple color as well as a gorgeous Bordeaux-like bouquet of mocha, menthol, scorched earth, black cherries, currants, smoke, and toasty oak.",
+          "attributes": [
+            {
+              "code": "characteristics",
+              "value": "Oak",
+			  "original":"oak"
+            },
+            {
+              "code": "characteristics",
+              "value": "Menthol",
+			  "original":"menthol"
+            },
+            {
+              "code": "characteristics",
+              "value": "Smoke",
+			  "original":"smoke"
+            }
+          ]
+        },
+        {
+          "text": "The wine is expressive and full-bodied, with stunning concentration yet admirable delineation.",
+          "attributes": [
+            {
+              "code": "body",
+              "value": "Full-Bodied"
+            }
+          ]
+        },
+        {
+          "text": "Its moderately high tannin in the finish suggests considerable patience is warranted.",
+          "attributes": []
+        },
+        {
+          "text": "Anticipated maturity: 2006-2025.",
+          "attributes": []
+        }
+      ]
+    },
+    {
+      "reviewer": null,
+      "rating": null,
+      "sentences": []
+    }
+  ]
+}

@@ -6,3 +6,5 @@ dev_data/
 application/spiders/*.txt
 celerybeat-schedule
 celerybeat.pid
+env
+.DS_Store

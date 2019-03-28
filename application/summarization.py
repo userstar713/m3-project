@@ -153,7 +153,7 @@ def extract_text(sorted_sum_dic):
     return summery_text.strip(), score
 
 
-def summarize(structured_data, max_words_len=30):
+def summarize(structured_data, max_words_len=50):
     summary_list = []
     sum_dic_list = scoring(structured_data)
     for sum_dic in sum_dic_list:
@@ -177,7 +177,7 @@ def summarize(structured_data, max_words_len=30):
 
 
 def main():
-    with open('output.json', 'r') as f:
+    with open('./tools/example_input.json', 'r') as f:
         json_data = json.load(f)
         for product in json_data.values():
             summary, _ = summarize(product)
