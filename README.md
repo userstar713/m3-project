@@ -19,3 +19,4 @@ POST /api/1/source/:source_id/sync/
 2. Activate virtualenv: `pipenv shell`
 3. Start scraper manually:
     `python application/spiders/klwines.py`
+    
