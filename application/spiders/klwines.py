@@ -243,11 +243,12 @@ class KLWinesSpider(AbstractSpider):
             '//ul[@id="category-menu-container-ProductType"]/li/a')[::-1]
         for row in rows:
             wine_filter = row.xpath('@href').extract()[0]
-            wine_type = row.xpath('@title').extract()[0]
+            # wine_type = row.xpath('@span').extract()[0]  # prev version, changed Apr 2 2019
+            wine_type = row.xpath('span/text()')[0].extract()
             wine_type = wine_type.replace('Wine - ', '')
             wines_total = row.xpath('span[2]/text()').extract()[0]
             wines_total = int(wines_total[1:-1])
-            if 'misc' in wine_type:
+            if 'misc' in wine_type.lower():
                 continue
             res.append((wine_type, wines_total, wine_filter))
         return res
