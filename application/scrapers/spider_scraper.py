@@ -11,6 +11,7 @@ from scrapy.spiders import Spider
 from twisted.internet import reactor
 from application.config import (SCRAPER_PAGES_LIMIT,
                                 PROXY_URL,
+                                DISABLE_CLIENT_CONTEXTFACTORY,
                                 )
 from application.spiders.base.abstracts.spider import (
     CONCURRENT_REQUESTS,
@@ -26,12 +27,16 @@ def get_spider_settings(tmp_file: io.IOBase, source_id: int, spider: Spider,
         'FEED_FORMAT': 'jsonlines',
         'FEED_URI': f'file://{tmp_file.name}',
         'DOWNLOADER_CLIENT_TLS_METHOD': 'TLS',
-        # 'DOWNLOADER_CLIENTCONTEXTFACTORY': DOWNLOADER_CLIENTCONTEXTFACTORY,
+        'DOWNLOADER_CLIENTCONTEXTFACTORY': DOWNLOADER_CLIENTCONTEXTFACTORY,
         'USER_AGENT': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36',
         'CLOSESPIDER_PAGECOUNT': SCRAPER_PAGES_LIMIT,
         'FULL_SCRAPE': full_scrape,
         'SOURCE_ID': source_id,
     }
+    # MB: Doesn't run on MB Mac with this. But seems to be required in production
+    if DISABLE_CLIENT_CONTEXTFACTORY:
+        del settings['DOWNLOADER_CLIENTCONTEXTFACTORY']
+
     if full_scrape:
         settings['ITEM_PIPELINES'] = {spider.filter_pipeline: 300}
     else:

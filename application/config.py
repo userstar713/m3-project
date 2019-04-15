@@ -40,4 +40,7 @@ CELERY_RESULT_BACKEND = getenv('CELERY_RESULT_BACKEND', REDIS_URI)
 CELERY_EAGER = getenv('CELERY_EAGER', 0)
 SCRAPER_PAGES_LIMIT = int(getenv('SCRAPER_PAGES_LIMIT', 0))
 PROXY_URL = 'http://lum-customer-hl_2a4458fe-zone-static-country-us:zidoxuxldfjn@zproxy.lum-superproxy.io:22225'
+
+DISABLE_CLIENT_CONTEXTFACTORY = getenv('DISABLE_CLIENT_CONTEXTFACTORY', False)
+
 # PROXY_URL = None
