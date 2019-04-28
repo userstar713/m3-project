@@ -20,3 +20,6 @@ GET /api/1/source/:source_id/sync/
 3. Start scraper manually:
     `python application/spiders/klwines.py`
     
+# Start service for routes
+cd application
+flask run -p 5000

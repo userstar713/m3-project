@@ -101,17 +101,26 @@ def attribute_lookup(sentence,
         if atts:
             attributes.extend(atts)
     if not attributes:
-        from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+
         attributes =dictionary_lookup.lookup(source_id, sentence, attr_codes=[attribute_code])[0]
     return attributes
 
 
+def python_dictionary_lookup(source_id, sentence, attr_codes=None):
+    from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+    if not dictionary_lookup.entities_text_id_dict:
+        dictionary_lookup.update_dictionary_lookup_data()
+
+    result = dictionary_lookup.lookup(source_id, sentence, attr_codes)
+    return result
+
+
+
 def domain_attribute_lookup(sentence, source_id):
+    from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
     result = attribute_lookup(sentence, source_id=source_id)
     return {'attributes': result, 'extra_words': []}
 
-
-#
 
 def _domain_attribute_lookup(sentence):
     print('sentence')

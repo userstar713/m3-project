@@ -4,10 +4,22 @@ from flask import (jsonify,
 
 from application.tasks.spiders import execute_spider
 from application.tasks.synchronization import execute_pipeline_task
+from application.db_extension.routines import python_dictionary_lookup
 
 from .helpers import seller_integration_bp
 
 from ..tasks import start_synchronization
+
+
+@seller_integration_bp.route('/lookup_attributes', methods=['POST'])
+def route_action():
+    body = request.get_json()
+    sentence = body.get('text', '')
+    category_id = int(body.get('category_id', 1))
+    attr_codes = body.get('attr_codes')
+    result = python_dictionary_lookup(None, sentence, attr_codes)[0]
+    print(result)
+    return jsonify(result)
 
 
 @seller_integration_bp.route(
