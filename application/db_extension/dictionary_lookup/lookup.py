@@ -51,6 +51,7 @@ class DictionaryLookupClass(metaclass=Singleton):
         self._updated = False
         self._files = []
         self.word_lemma_dictionary_for_query = {}
+        self.last_time_dictionary_updated = None
 
     def get_dict_entity_for_str(self, s):
         return self.entities_text_id_dict.get(s, None)
@@ -873,6 +874,7 @@ class DictionaryLookupClass(metaclass=Singleton):
         self.entities_dict = ordered_entities_dict
         log_function('finished dictionary update in %s',
                      datetime.now() - start_time)
+        self.last_time_dictionary_updated = datetime.now()
 
 
 dictionary_lookup = DictionaryLookupClass()

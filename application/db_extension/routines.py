@@ -101,7 +101,7 @@ def attribute_lookup(sentence,
         if atts:
             attributes.extend(atts)
     if not attributes:
-
+        from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
         attributes =dictionary_lookup.lookup(source_id, sentence, attr_codes=[attribute_code])[0]
     return attributes
 
@@ -111,8 +111,8 @@ def python_dictionary_lookup(source_id, sentence, attr_codes=None):
     if not dictionary_lookup.entities_text_id_dict:
         dictionary_lookup.update_dictionary_lookup_data()
 
-    result = dictionary_lookup.lookup(source_id, sentence, attr_codes)
-    return result
+    attributes = dictionary_lookup.lookup(source_id, sentence, attr_codes)[0]
+    return attributes
 
 
 

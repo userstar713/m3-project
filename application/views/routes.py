@@ -17,9 +17,15 @@ def route_action():
     sentence = body.get('text', '')
     category_id = int(body.get('category_id', 1))
     attr_codes = body.get('attr_codes')
-    result = python_dictionary_lookup(None, sentence, attr_codes)[0]
-    print(result)
-    return jsonify(result)
+    attributes = python_dictionary_lookup(None, sentence, attr_codes)
+    return jsonify(attributes)
+
+
+@seller_integration_bp.route('/reload_dictionary')
+def route_reload_dictionary():
+    from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
+    dictionary_lookup.update_dictionary_lookup_data()
+    return jsonify({'msg': 'dictionary reloaded'})
 
 
 @seller_integration_bp.route(
