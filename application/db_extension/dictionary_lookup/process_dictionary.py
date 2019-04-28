@@ -56,8 +56,8 @@ def convert_to_dict_lookup(data,
     # remove already existing rows from the list:
     log_function('{} rows to convert'.format(len(data)))
     for i, row in enumerate(data):
-        if not i % 10000:
-            log_function('{} rows converted'.format(i))
+        if not i % 10000 or (i > 60000):
+            log_function('{} rows converted, id={}'.format(i, row['id']))
         data[i] = _convert(dict(zip(fieldnames, row)))
     return data
 

@@ -19,5 +19,5 @@ COPY . .
 
 EXPOSE 3000
 ENTRYPOINT ["gunicorn"]
-CMD ["--bind", "0.0.0.0:3000", "-k", "gevent", "--workers", "1", "application.wsgi:app"]
+CMD ["--bind", "0.0.0.0:3000", "-k", "gevent", "--workers", "2", "application.wsgi:app"]
 

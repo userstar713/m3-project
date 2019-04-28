@@ -55,7 +55,7 @@ services:
       - ./application:/srv/application
     ports:
       - 8000:8000
-    command: gunicorn --bind 0.0.0.0 -k gevent --workers 1 --preload application.wsgi:app --reload
+    command: gunicorn --bind 0.0.0.0 -k gevent --workers 2 --preload application.wsgi:app --reload
 
   worker:
     build:
