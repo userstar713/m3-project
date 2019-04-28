@@ -853,6 +853,8 @@ class DictionaryLookupClass(metaclass=Singleton):
         # Also, return any products we may have
         return_attrs = self.format_as_predicate_syntax(matched)
         return_extra_words = remaining_word_indexes.union(stopword_indexes)
+        orig_word_list = s.split()
+        return_extra_words = [orig_word_list[i] for i in return_extra_words]
         self.word_lemma_dictionary_for_query = {}
         return return_attrs, product_ids, return_extra_words
 

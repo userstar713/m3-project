@@ -111,8 +111,9 @@ def python_dictionary_lookup(source_id, sentence, attr_codes=None):
     if not dictionary_lookup.entities_text_id_dict:
         dictionary_lookup.update_dictionary_lookup_data()
 
-    attributes = dictionary_lookup.lookup(source_id, sentence, attr_codes)[0]
-    return attributes
+    attributes, _, extra_words = dictionary_lookup.lookup(source_id, sentence, attr_codes=attr_codes)
+    print("extra_words=", extra_words)
+    return {'attributes': attributes, 'extra_words': list(extra_words)}
 
 
 

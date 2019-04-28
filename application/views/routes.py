@@ -12,13 +12,14 @@ from ..tasks import start_synchronization
 
 
 @seller_integration_bp.route('/lookup_attributes', methods=['POST'])
-def route_action():
+def route_lookup_attributes():
     body = request.get_json()
     sentence = body.get('text', '')
-    category_id = int(body.get('category_id', 1))
+    # category_id = int(body.get('category_id', 1))
     attr_codes = body.get('attr_codes')
-    attributes = python_dictionary_lookup(None, sentence, attr_codes)
-    return jsonify(attributes)
+    result = python_dictionary_lookup(None, sentence, attr_codes)
+    print(result)
+    return jsonify(result)
 
 
 @seller_integration_bp.route('/reload_dictionary')
