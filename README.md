@@ -23,3 +23,4 @@ GET /api/1/source/:source_id/sync/
 # Start service for routes
 cd application
 flask run -p 5000
+

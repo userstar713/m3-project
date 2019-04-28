@@ -27,7 +27,7 @@ CACHE_REDIS_DB = REDIS_DB
 BASE_PATH = Path(__file__).parent
 
 SQLALCHEMY_DATABASE_URI = getenv('SQLALCHEMY_DATABASE_URI',
-                                 'postgresql://legoly_role:galapagosv2@terraform-00d41ec4239d29679706e2f698.cm1wf8rz8bru.us-east-1.rds.amazonaws.com/m3')
+                                 'postgresql://dbadmin:Char876Win@terraform-00d41ec4239d29679706e2f698.cm1wf8rz8bru.us-east-1.rds.amazonaws.com/m3')
 
 # https://github.com/mitsuhiko/flask-sqlalchemy/issues/365
 SQLALCHEMY_TRACK_MODIFICATIONS = False
