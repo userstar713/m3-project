@@ -143,11 +143,11 @@ class DictionaryLookupClass(metaclass=Singleton):
                    'node_id': entity['entity_id'],
                    'start': entity['start'],
                    'end': entity['end'],
-                   'derived_definition': self.entities_dict[entity['id']].get(
-                       'derived_definition', ""),
-                   'derived_guides': self.entities_dict[entity['id']].get(
-                       'derived_guides', []),
-                   'ancestor_node_length': self.entities_dict[entity['id']].get('ancestor_node_length',-2),
+                   #'derived_definition': self.entities_dict[entity['id']].get(
+                   #    'derived_definition', ""),
+                   #'derived_guides': self.entities_dict[entity['id']].get(
+                   #    'derived_guides', []),
+                   #'ancestor_node_length': self.entities_dict[entity['id']].get('ancestor_node_length',-2),
                    'max_idf': entity['max_idf']
                    }
 

@@ -13,10 +13,6 @@ from ..tasks import start_synchronization
 
 @seller_integration_bp.route('/lookup_attributes', methods=['POST'])
 def route_lookup_attributes():
-
-    # Chew up some memory
-    mymem = "X" * 20000000  # 20m
-
     body = request.get_json()
     sentence = body.get('text', '')
     # category_id = int(body.get('category_id', 1))
