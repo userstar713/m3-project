@@ -60,7 +60,7 @@ services:
   worker:
     build:
       context: .
-      dockerfile: Dockerfile-devd
+      dockerfile: Dockerfile-dev
     depends_on:
       - db
       - redis
