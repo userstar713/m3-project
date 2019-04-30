@@ -155,7 +155,9 @@ LOOKUP_LOCAL_STOPWORDS = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourse
 '''
 LOOKUP_LOCAL_STOPWORDS = set()
 
-LOOKUP_STOPWORDS = LOOKUP_LOCAL_STOPWORDS.union(LOOKUP_COMMON_VERBS)
+
+LOOKUP_STOPWORDS = set() # dont' use stopwords
+#LOOKUP_STOPWORDS = LOOKUP_LOCAL_STOPWORDS.union(LOOKUP_COMMON_VERBS)
 
 LOOKUP_COMMON_WORDS = {'a', 'and', 'the', 'an', 'du', 'le', 'la', 'i', 'co',
                        'company', 'inc', 'no', 'not', 'and', 'or'}

@@ -594,6 +594,8 @@ def remove_stopwords(text):
     remaining_words = [word for i, word in enumerate(
         words) if i not in removed_indexes]
     modified_text = ' '.join(remaining_words)
+
+    print('text, modified_text, removed_indexes=', text, modified_text, removed_indexes)
     return modified_text, removed_indexes
 
 
