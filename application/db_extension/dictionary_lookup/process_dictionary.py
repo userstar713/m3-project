@@ -30,8 +30,8 @@ def convert_to_dict_lookup(data,
         # Use the value from postgres if it's there (should always be there)
         cleaned_string = row['text_value_processed'] if row.get('text_value_processed') else cleanup_string(
             row['text_value'])
-        #row['text_value'], _ = remove_stopwords(cleaned_string)
-        row['text_value'] = cleaned_string
+        row['text_value'], _ = remove_stopwords(cleaned_string)   # We also remove in lookup function
+        # row['text_value'] = cleaned_string
         if row['text_value'] == '':
             logger.debug("Add to nlp_ngrams: ", orig_str)
             row['text_value'] = orig_str
