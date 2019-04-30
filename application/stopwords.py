@@ -1,3 +1,7 @@
+
+STOPWORDS: set = {}
+
+'''
 STOPWORDS: set = {"a",
                    "about",
                    "above",
@@ -426,3 +430,4 @@ STOPWORDS: set = {"a",
                    "your",
                    "yours",
                    "z", }
+'''
