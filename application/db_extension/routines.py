@@ -5,7 +5,7 @@ from application.caching import cache
 import re
 from funcy import log_durations
 from application.logging import logger
-from application.db_extension.dictionary_lookup.utils import cleanup_string, remove_stopwords
+
 
 def validate_pipeline_run(sequence_id: int, source_id: int):
     return True  # FIXME always return true
@@ -79,6 +79,7 @@ def attribute_lookup(sentence,
     """
     # Remove potentially problematic chars
     sentence = re.sub('[^A-Za-z0-9$]+', ' ', sentence).lstrip()
+    from application.db_extension.dictionary_lookup.utils import cleanup_string
     sentence = cleanup_string(sentence)
 
     q = """SELECT *
@@ -108,7 +109,7 @@ def attribute_lookup(sentence,
 
 
 def python_dictionary_lookup(source_id, sentence, attr_codes=None):
-
+    from application.db_extension.dictionary_lookup.utils import cleanup_string
     sentence = cleanup_string(sentence)
 
     from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
@@ -122,6 +123,7 @@ def python_dictionary_lookup(source_id, sentence, attr_codes=None):
 
 
 def domain_attribute_lookup(sentence, source_id):
+    from application.db_extension.dictionary_lookup.utils import cleanup_string
     sentence = cleanup_string(sentence)
     from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
     result = attribute_lookup(sentence, source_id=source_id)
