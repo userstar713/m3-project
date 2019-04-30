@@ -117,7 +117,6 @@ def python_dictionary_lookup(source_id, sentence, attr_codes=None):
         dictionary_lookup.update_dictionary_lookup_data()
 
     attributes, _, extra_words = dictionary_lookup.lookup(source_id, sentence, attr_codes=attr_codes)
-    print("extra_words=", extra_words)
     return {'attributes': attributes, 'extra_words': list(extra_words)}
 
 
@@ -131,7 +130,6 @@ def domain_attribute_lookup(sentence, source_id):
 
 
 def _domain_attribute_lookup(sentence):
-    print('sentence')
     index = 0
     result = attribute_lookup(sentence)
     final_result = []

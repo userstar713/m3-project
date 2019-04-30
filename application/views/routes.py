@@ -18,7 +18,6 @@ def route_lookup_attributes():
     # category_id = int(body.get('category_id', 1))
     attr_codes = body.get('attr_codes')
     result = python_dictionary_lookup(None, sentence, attr_codes)
-    print(result)
     return jsonify(result)
 
 
