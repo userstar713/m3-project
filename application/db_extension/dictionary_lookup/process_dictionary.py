@@ -26,7 +26,7 @@ def convert_to_dict_lookup(data,
     def _convert(row):
         orig_str = row['text_value']
         row['original_text_value'] = orig_str
-        row['original_text_value'] = ''  # TODO: Remove this when we get enough memory
+        # row['original_text_value'] = ''  # TODO: Remove this when we get enough memory
         # Use the value from postgres if it's there (should always be there)
         cleaned_string = row['text_value_processed'] if row.get('text_value_processed') else cleanup_string(
             row['text_value'])
