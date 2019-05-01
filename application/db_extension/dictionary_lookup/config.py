@@ -153,15 +153,12 @@ LOOKUP_LOCAL_STOPWORDS = {'i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourse
                           'less', 'more', 'between', 'something'
                           }
 '''
-LOOKUP_LOCAL_STOPWORDS = set()
+# LOOKUP_LOCAL_STOPWORDS = set()
 
-
-LOOKUP_STOPWORDS = set() # dont' use stopwords
-#LOOKUP_STOPWORDS = LOOKUP_LOCAL_STOPWORDS.union(LOOKUP_COMMON_VERBS)
-
-LOOKUP_COMMON_WORDS = {'a', 'and', 'the', 'an', 'du', 'le', 'la', 'i', 'co',
-                       'company', 'inc', 'no', 'not', 'and', 'or'}
+LOOKUP_COMMON_WORDS = {'a', 'and', 'the', 'an', 'du', 'del', 'do', 'da', 'le', 'la', 'i', 'co',
+                       'company', 'inc', 'no', 'not', 'or'}
 LOOKUP_COMMON_PENALTY = 0.90
+LOOKUP_STOPWORDS = list(LOOKUP_COMMON_WORDS)
 
 
 SCHEDULE_TIMEOUT_PIPELINE = int(getenv('SCHEDULE_TIMEOUT_PIPELINE', 0))

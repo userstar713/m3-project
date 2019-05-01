@@ -79,8 +79,8 @@ def attribute_lookup(sentence,
     """
     # Remove potentially problematic chars
     sentence = re.sub('[^A-Za-z0-9$]+', ' ', sentence).lstrip()
-    from application.db_extension.dictionary_lookup.utils import cleanup_string
-    sentence = cleanup_string(sentence)
+    from application.db_extension.dictionary_lookup.utils import cleanup_string, remove_stopwords
+    sentence, _ = remove_stopwords(cleanup_string(sentence))
 
     q = """SELECT *
            FROM public.attribute_lookup2 (:category_id,
@@ -109,8 +109,8 @@ def attribute_lookup(sentence,
 
 
 def python_dictionary_lookup(source_id, sentence, attr_codes=None):
-    from application.db_extension.dictionary_lookup.utils import cleanup_string
-    sentence = cleanup_string(sentence)
+    from application.db_extension.dictionary_lookup.utils import cleanup_string, remove_stopwords
+    sentence, _ = remove_stopwords(cleanup_string(sentence))
 
     from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
     if not dictionary_lookup.entities_text_id_dict:
@@ -122,8 +122,8 @@ def python_dictionary_lookup(source_id, sentence, attr_codes=None):
 
 
 def domain_attribute_lookup(sentence, source_id):
-    from application.db_extension.dictionary_lookup.utils import cleanup_string
-    sentence = cleanup_string(sentence)
+    from application.db_extension.dictionary_lookup.utils import cleanup_string, remove_stopwords
+    sentence, _ = remove_stopwords(cleanup_string(sentence))
     from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
     result = attribute_lookup(sentence, source_id=source_id)
     return {'attributes': result, 'extra_words': []}

@@ -26,24 +26,16 @@ def convert_to_dict_lookup(data,
     def _convert(row):
         orig_str = row['text_value']
         row['original_text_value'] = orig_str
-        # row['original_text_value'] = ''  # TODO: Remove this when we get enough memory
         # Use the value from postgres if it's there (should always be there)
-        cleaned_string = row['text_value_processed'] if row.get('text_value_processed') else cleanup_string(
-            row['text_value'])
+        cleaned_string = cleanup_string(row['text_value'])
         row['text_value'], _ = remove_stopwords(cleaned_string)   # We also remove in lookup function
         # row['text_value'] = cleaned_string
         if row['text_value'] == '':
-            logger.debug("Add to nlp_ngrams: ", orig_str)
+            print("Add to nlp_ngrams: ", orig_str)
+            # logger.debug("Add to nlp_ngrams: ", orig_str)
             row['text_value'] = orig_str
         row['words'] = row['text_value'].split()
         row['word_count'] = len(row['words'])
-        #row['id'] = row['id']
-        #row['entity_id'] = row['entity_id']
-        #row['category_id'] = row['category_id']
-        #row['attribute_id'] = row['attribute_id']
-        #row['derived_definition'] = row.get('derived_definition', '')
-        #row['derived_guides'] = row.get('derived_guides', [])
-        #row['ancestor_node_length'] = row.get('ancestor_node_length', -1)
         return row
 
     log_function('got data from database, starting convert process...')
