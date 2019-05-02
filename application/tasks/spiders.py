@@ -9,10 +9,11 @@ from application.spiders import (klwines,
                                  thewineclub,
                                  totalwine,
                                  wine_com,
-                                 wine_library)
+                                 wine_library,
+                                 bevsites)
 from application.db_extension.models import db, Source
 
-from application.scrapers import SpiderScraper
+from application.scrapers import SpiderScraper, CSVURLScraper
 
 
 LOGGER = logging.getLogger(__name__)
@@ -38,16 +39,18 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
     source = db.session.query(Source).get(source_id)
 
     # TODO refactor that
-    if source.name == 'K&L Wines':
+    if source.source_code == 'KLWINES':
         scraper = SpiderScraper(klwines.KLWinesSpider)
-    elif source.name == 'Wine Library':
+    elif source.source_code == 'WINELIBRARY':
         scraper = SpiderScraper(wine_library.WineLibrarySpider)
-    elif source.name == 'Wine.com':
+    elif source.source_code == 'WINECOM':
         scraper = SpiderScraper(wine_com.WineComSpider)
-    elif source.name == 'The wine club':
+    elif source.source_code == 'THEWINECLUB':
         scraper = SpiderScraper(thewineclub.TheWineClubSpider)
-    elif source.name == 'Total Wine':
+    elif source.source_code == 'TOTALWINE':
         scraper = SpiderScraper(totalwine.TotalWineSpider)
+    elif source.source_code == 'BEVSITES':
+        scraper = CSVURLScraper(bevsites.BevsitesCSVScraper)
     else:
         raise ValueError(f'No support for source with name {source.name}')
     data = scraper.run(source_id, full=full)
