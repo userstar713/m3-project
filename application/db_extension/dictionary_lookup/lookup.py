@@ -791,8 +791,14 @@ class DictionaryLookupClass(metaclass=Singleton):
 
     def check_top_matches(self, matched_entities, source_brand_list):
         # Do a special check if top 2 matches are brands and within a certain % of each other, but the 2nd brand
-        #  is in the current source, while the 1s brand is not, then swap 1 and 2.
+        #  is in the current source, while the 1s brand is not, then swap 1 and 2. (doesn't do anything in m3)
+
+        # Also, if brand 2 has a starting position that is before brand 1, then switch.
+
         if len(matched_entities) >= 2:
+
+            print("*** matched entities:", matched_entities[0:10])
+
             is_brand1 = self.entities_dict[matched_entities[0]['id']][
                             'attribute_code'] == 'brand'
             is_brand2 = self.entities_dict[matched_entities[1]['id']][
@@ -804,12 +810,16 @@ class DictionaryLookupClass(metaclass=Singleton):
                                       matched_entities[1]['final_score'])
                 score_ratio = min_brand_score / max_brand_score
                 min_score_ratio = 0.70  # must be within 30% of each other
+
+                brand1_start_pos = matched_entities[0]['matched_words'][0]['query_indx']
+                brand2_start_pos = matched_entities[1]['matched_words'][0]['query_indx']
+                is_brand2_before_brand1 = brand2_start_pos < brand1_start_pos
+
                 if score_ratio > min_score_ratio and \
-                        matched_entities[0][
-                            'entity_id'] not in source_brand_list and \
-                        matched_entities[1]['entity_id'] in source_brand_list:
-                    matched_entities[0], matched_entities[1] = \
-                        matched_entities[1], matched_entities[0]
+                        ((matched_entities[0]['entity_id'] not in source_brand_list and
+                          matched_entities[1]['entity_id'] in source_brand_list) or is_brand2_before_brand1):
+
+                    matched_entities[0], matched_entities[1] = matched_entities[1], matched_entities[0]
         return matched_entities
 
     def lookup(self, source_id, s, is_single_brand=True, is_disallow_brand=False,
