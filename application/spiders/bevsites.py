@@ -7,5 +7,4 @@ BEVSITES_DATA_URL = 'https://dl.dropbox.com/s/keowy5llbuea3yk/added_review_bevsi
 
 class BevsitesCSVScraper(CSVURLScraper):
     def __init__(self):
-        super().__init__()
-        self._data_url = BEVSITES_DATA_URL
+        super().__init__(data_url=BEVSITES_DATA_URL)

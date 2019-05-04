@@ -50,8 +50,12 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
     elif source.source_code == 'TOTALWINE':
         scraper = SpiderScraper(totalwine.TotalWineSpider)
     elif source.source_code == 'BEVSITES':
-        scraper = CSVURLScraper(bevsites.BevsitesCSVScraper)
+        scraper = bevsites.BevsitesCSVScraper()
     else:
         raise ValueError(f'No support for source with name {source.name}')
-    data = scraper.run(source_id, full=full)
+    try:
+        data = scraper.run(source_id, full=full)
+    except:
+        print('error')
+    
     return data

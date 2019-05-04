@@ -14,16 +14,16 @@ services:
   #  ports:
   #    - 5432:5432
 
-  alembic:
-    build: ./application/db_repo
-    tty: true
-    volumes:
-      - ./application/db_repo:/db
-    environment:
-      - PGHOST=db
-      - PGDATABASE=m3
-      - PGUSER=postgres
-      - PGPASSWORD=password
+  # alembic:
+  #   build: ./application/db_repo
+  #   tty: true
+  #   volumes:
+  #     - ./application/db_repo:/db
+  #   environment:
+  #     - PGHOST=db
+  #     - PGDATABASE=m3
+  #     - PGUSER=postgres
+  #     - PGPASSWORD=password
 
   db:
     image: postgres:9.6

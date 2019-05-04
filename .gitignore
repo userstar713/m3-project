@@ -8,4 +8,6 @@ celerybeat-schedule
 celerybeat.pid
 env
 .DS_Store
-
+.vscode
+run.py
+klwines.txt
