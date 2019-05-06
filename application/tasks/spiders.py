@@ -13,8 +13,7 @@ from application.spiders import (klwines,
                                  bevsites)
 from application.db_extension.models import db, Source
 
-from application.scrapers import SpiderScraper, CSVURLScraper
-
+from application.scrapers import SpiderScraper
 
 LOGGER = logging.getLogger(__name__)
 
@@ -53,9 +52,8 @@ def task_execute_spider(self, source_id: int, full=True) -> None:
         scraper = bevsites.BevsitesCSVScraper()
     else:
         raise ValueError(f'No support for source with name {source.name}')
-    try:
-        data = scraper.run(source_id, full=full)
-    except:
-        print('error')
+    
+    data = scraper.run(source_id, full=full)
+    
     
     return data

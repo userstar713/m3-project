@@ -31,6 +31,8 @@ def prepare_products(source_id: int, products: Iterable,
     else:
         [p.update({'source_id': source_id}) for p in products]
         res = products
+    print('===============================================================================')
+    print(len(res))
     return res
 
 
@@ -52,14 +54,22 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     add_new_products = False
     products = []
     for i, product in enumerate(chunk):
+        print('++++++++++++++++++++++++++++++++++++++++++++++')
+        print(product)
+        print(len(product))
+        print(enumerate(chunk))
+        print('+++++++++++++++++++++++++++++++++++++++++++++++++')
         logger.info("Processing product # %s", i)
         if not full and len(product) > 5:
             product = Product.from_raw(source_id, product).as_dict()
             p = Product(**product)
+            print(product)
             processor.process(p)
             add_new_products = True
         elif full:
             p = Product(**product)
+            print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+            print(p)
             processor.process(p)
         else:
             p = UpdateProduct(**product)
@@ -68,6 +78,10 @@ def process_product_list_task(_, chunk: List[dict], full=True) -> tuple:
     if not full:
         processor.delete_old_products()
     processor.flush()
+    print('*********************************************************')
+    print(len(products))
+    print(add_new_products)
+    print('*********************************************************')
     return products, add_new_products
 
 
@@ -109,6 +123,8 @@ def get_products_task(_, products: List[dict], source_id: int,
     else:
         from application.db_extension.dictionary_lookup.lookup import dictionary_lookup
         dictionary_lookup.update_dictionary_lookup_data()
+    print('#############################')
+    print(len(products))
     return prepare_products(source_id, products, full=full)
 
 
@@ -139,7 +155,7 @@ def start_synchronization(source_id: int, full=True) -> str:
             | clean_sources_task.s(source_id)\
             | get_products_task.s(source_id)\
             | process_product_list_task.s() \
-            | execute_pipeline_task.s(source_id)
+            | execute_pipeline_task.s(source_id,full=full)
     else:
         job = task_execute_spider.si(source_id, full=full)\
             | get_products_task.s(source_id, full=full)\
